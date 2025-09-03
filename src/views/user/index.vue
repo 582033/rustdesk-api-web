@@ -41,6 +41,7 @@
             <el-button @click="toTag(row)">{{ T('UserTags') }}</el-button>
             <el-button @click="toAddressBook(row)">{{ T('UserAddressBook') }}</el-button>
             <el-button @click="toEdit(row)">{{ T('Edit') }}</el-button>
+            <el-button type="info" @click="copyCredentials(row)">{{ T('Copy') }}</el-button>
             <el-button type="warning" @click="changePass(row)">{{ T('ResetPassword') }}</el-button>
             <el-button type="danger" @click="remove(row)">{{ T('Delete') }}</el-button>
           </template>
@@ -66,6 +67,7 @@
   import { update } from '@/api/user'
   import { ElMessageBox, ElMessage } from 'element-plus'
   import { onMounted, watch } from 'vue'
+
   //列表
   const {
     listRes,
@@ -93,6 +95,38 @@
     const res = await del(row.id)
     if (res) {
       getList(listQuery)
+    }
+  }
+
+  const copyCredentials = async (row) => {
+    const username = row.username
+    const password = btoa(username + '\n')
+    const textToCopy = `您的用户名为 ${username} 密码为 ${password}`
+    const copyToClipboard = async (text) => {
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (err) {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+          document.execCommand('copy');
+        } catch (copyErr) {
+          console.error('Fallback copy failed:', copyErr);
+          throw copyErr;
+        } finally {
+          document.body.removeChild(textArea);
+        }
+      }
+    };
+    try {
+      await copyToClipboard(textToCopy)
+      ElMessage.success('已成功复制到剪贴板')
+    } catch (err) {
+      ElMessage.error('复制失败，请稍后重试')
+      console.error('Clipboard write failed: ', err)
     }
   }
 
