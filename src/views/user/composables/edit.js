@@ -1,6 +1,6 @@
 import { ref, onMounted, reactive, watch } from 'vue'
 import { create, detail, update, remove } from '@/api/user'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { message, Modal } from 'ant-design-vue'
 import { useRouter } from 'vue-router'
 import { list as groups } from '@/api/group'
 import { T } from '@/utils/i18n'
@@ -68,7 +68,7 @@ export function useSubmit (form, id) {
 
     const res = await submitFunc()
     if (res) {
-      ElMessage.success(T('OperationSuccess'))
+      message.success(T('OperationSuccess'))
       router.back()
     }
   }

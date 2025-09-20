@@ -1,69 +1,66 @@
 <template>
 
-  <el-form class="dialog-form" ref="form" :model="ABFormData" label-width="120px">
-    <el-form-item :label="T('Owner')" prop="user_ids" required>
-      <el-select v-model="ABFormData.user_ids" multiple @change="changeUser">
-        <el-option
+  <a-form class="dialog-form" ref="form" :model="ABFormData" layout="vertical">
+    <a-form-item :label="T('Owner')" name="user_ids" :rules="[{ required: true }]">
+      <a-select v-model:value="ABFormData.user_ids" mode="multiple" @change="changeUser">
+        <a-select-option
             v-for="item in allUsers"
             :key="item.id"
-            :label="item.username"
             :value="item.id"
-        ></el-option>
-      </el-select>
-    </el-form-item>
-    <el-form-item :label="T('AddressBookName')" v-if="ABFormData.user_ids.length<=1" required prop="collection_id">
-      <el-select v-model="ABFormData.collection_id" clearable @change="changeCollectionForUpdate">
-        <el-option :value="0" :label="T('MyAddressBook')"></el-option>
-        <el-option v-for="c in collectionListResForUpdate.list" :key="c.id" :label="c.name" :value="c.id"></el-option>
-      </el-select>
-    </el-form-item>
-    <el-form-item label="ID" prop="id" required>
-      <el-input v-model="ABFormData.id"></el-input>
-    </el-form-item>
-    <el-form-item :label="T('Username')" prop="username">
-      <el-input v-model="ABFormData.username"></el-input>
-    </el-form-item>
-    <el-form-item :label="T('Alias')" prop="alias">
-      <el-input v-model="ABFormData.alias"></el-input>
-    </el-form-item>
-    <el-form-item :label="T('Hostname')" prop="hostname">
-      <el-input v-model="ABFormData.hostname"></el-input>
-    </el-form-item>
-    <el-form-item :label="T('Platform')" prop="platform">
-      <el-select v-model="ABFormData.platform">
-        <el-option
+        >{{ item.username }}</a-select-option>
+      </a-select>
+    </a-form-item>
+    <a-form-item :label="T('AddressBookName')" v-if="ABFormData.user_ids.length<=1" :rules="[{ required: true }]" name="collection_id">
+      <a-select v-model:value="ABFormData.collection_id" clearable @change="changeCollectionForUpdate">
+        <a-select-option :value="0" :label="T('MyAddressBook')">{{ T('MyAddressBook') }}</a-select-option>
+        <a-select-option v-for="c in collectionListResForUpdate.list" :key="c.id" :value="c.id">{{ c.name }}</a-select-option>
+      </a-select>
+    </a-form-item>
+    <a-form-item label="ID" name="id" :rules="[{ required: true }]">
+      <a-input v-model:value="ABFormData.id"></a-input>
+    </a-form-item>
+    <a-form-item :label="T('Username')" name="username">
+      <a-input v-model:value="ABFormData.username"></a-input>
+    </a-form-item>
+    <a-form-item :label="T('Alias')" name="alias">
+      <a-input v-model:value="ABFormData.alias"></a-input>
+    </a-form-item>
+    <a-form-item :label="T('Hostname')" name="hostname">
+      <a-input v-model:value="ABFormData.hostname"></a-input>
+    </a-form-item>
+    <a-form-item :label="T('Platform')" name="platform">
+      <a-select v-model:value="ABFormData.platform">
+        <a-select-option
             v-for="item in ABPlatformList"
             :key="item.value"
-            :label="item.label"
             :value="item.value"
-        ></el-option>
-      </el-select>
-    </el-form-item>
+        >{{ item.label }}</a-select-option>
+      </a-select>
+    </a-form-item>
 
-    <el-form-item :label="T('Tags')" prop="tags" v-if="ABFormData.user_ids.length<=1">
-      <el-select v-model="ABFormData.tags" multiple>
-        <el-option
+    <a-form-item :label="T('Tags')" name="tags" v-if="ABFormData.user_ids.length<=1">
+      <a-select v-model:value="ABFormData.tags" mode="multiple">
+        <a-select-option
             v-for="item in tagListRes.list"
             :key="item.name"
-            :label="item.name"
             :value="item.name"
-        ></el-option>
-      </el-select>
-    </el-form-item>
-    <el-form-item>
-      <el-button @click="cancel">{{ T('Cancel') }}</el-button>
-      <el-button @click="ABSubmit" type="primary">{{ T('Submit') }}</el-button>
-    </el-form-item>
-  </el-form>
+        >{{ item.name }}</a-select-option>
+      </a-select>
+    </a-form-item>
+    <a-form-item>
+      <a-button @click="cancel">{{ T('Cancel') }}</a-button>
+      <a-button @click="ABSubmit" type="primary" style="margin-left: 8px;">{{ T('Submit') }}</a-button>
+    </a-form-item>
+  </a-form>
 </template>
 <script setup>
 
   import { T } from '@/utils/i18n'
   import { loadAllUsers } from '@/global'
-  import { onMounted, defineProps, defineEmits, onActivated } from 'vue'
+  import { onMounted } from 'vue'
   import { useRepositories as useABRepositories } from '@/views/address_book'
   import { batchCreate } from '@/api/address_book'
-  import { ElMessage } from 'element-plus'
+  import { message } from 'ant-design-vue'
 
   const emits = defineEmits(['cancel', 'success'])
   const props = defineProps({
@@ -101,11 +98,11 @@
 
   const ABSubmit = async () => {
     if (ABFormData.user_ids.length === 0) {
-      ElMessage.error(T('ParamRequired', { param: T('Owner') }))
+      message.error(T('ParamRequired', { param: T('Owner') }))
       return
     }
     if (!ABFormData.id) {
-      ElMessage.error(T('ParamRequired', { param: 'ID' }))
+      message.error(T('ParamRequired', { param: 'ID' }))
       return
     }
     if (ABFormData.user_ids.length > 1) {
@@ -114,7 +111,7 @@
     }
     const res = await batchCreate(ABFormData).catch(_ => false)
     if (res) {
-      ElMessage.success(T('OperationSuccess'))
+      message.success(T('OperationSuccess'))
       emits('success')
     }
   }

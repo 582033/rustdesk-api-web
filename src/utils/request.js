@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { ElMessage } from 'element-plus'
+import { message } from 'ant-design-vue'
 import { getToken, removeToken } from '@/utils/auth'
 import { useUserStore } from '@/store/user'
 import { pinia } from '@/store'
@@ -63,11 +63,7 @@ service.interceptors.response.use(
 
     // if the custom code is not 20000, it is judged as an error.
     if (res.code !== 0) {
-      ElMessage({
-        message: res.message || 'error',
-        type: 'error',
-        duration: 5 * 1000,
-      })
+      message.error(res.message || 'error', 5)
 
       if (res.code === 403) {
         removeToken()
@@ -83,11 +79,7 @@ service.interceptors.response.use(
       && error.message.indexOf('timeout') > -1) {
       error.message = 'Connection Time Out!'
     }
-    ElMessage({
-      message: error.message,
-      type: 'error',
-      duration: 5 * 1000,
-    })
+    message.error(error.message, 5)
     return Promise.reject(error)
   },
 )

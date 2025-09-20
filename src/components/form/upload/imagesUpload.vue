@@ -1,79 +1,46 @@
 <template>
   <div class="upload-order-file">
-    <el-upload
-            ref="upload"
-            :on-success="fileUploadSuccess"
-            :before-upload="beforeFileUpload"
-            :on-remove="fileRemove"
-            :on-exceed="onExceed"
-            :on-error="onError"
-            name="file"
-            :multiple="multiple"
-            :file-list="fileList"
-            :action="fileUploadHost"
-            :data="fileUploadData"
-            :headers="headers"
-            list-type="picture-card"
-            :limit="limit"
-            accept="image/*"
-            :drag="drag"
+    <a-upload
+        ref="upload"
+        :before-upload="beforeFileUpload"
+        :on-success="fileUploadSuccess"
+        :on-remove="fileRemove"
+        :on-exceed="onExceed"
+        :on-error="onError"
+        name="file"
+        :multiple="multiple"
+        :file-list="fileList"
+        :action="fileUploadHost"
+        :data="fileUploadData"
+        :headers="headers"
+        list-type="picture-card"
+        :accept="accept"
+        @preview="handlePreview"
     >
-      <template #default>
-        <div class="default-slot">
-          <slot name="default">
-            <div>
-              <el-icon class="default-icon">
-                <plus/>
-              </el-icon>
-              <div class="drag-tips">点击上传<span v-if="drag">或直接拖入文件</span></div>
-            </div>
-          </slot>
-        </div>
-      </template>
-      <template #file="{file}">
-        <img
-                v-if="file.status === 'success'"
-                class="el-upload-list__item-thumbnail"
-                :src="file.url"
-                alt=""
-        >
-        <label class="el-upload-list__item-status-label">
-          <el-icon color="white">
-            <check/>
-          </el-icon>
-        </label>
-        <el-progress
-                v-if="file.status === 'uploading'"
-                type="circle"
-                :stroke-width="6"
-                :percentage="parseInt(file.percentage)"
-        />
-        <span v-else-if="file.status === 'success'" class="el-upload-list__item-actions">
-          <el-icon class="el-upload-list__item-icon" @click="leftImage(file)"><arrow-left/></el-icon>
-          <el-icon class="el-upload-list__item-icon" @click="removeImage(file)"><Delete/></el-icon>
-          <el-icon class="el-upload-list__item-icon" @click="rightImage(file)"><arrow-right/></el-icon>
-        </span>
-      </template>
-    </el-upload>
+      <div v-if="fileList.length < limit">
+        <plus-outlined />
+        <div class="ant-upload-text">{{ T('Upload') }}</div>
+      </div>
+    </a-upload>
+    <a-modal :open="previewVisible" :title="previewTitle" :footer="null" @cancel="handleCancel">
+      <img alt="example" style="width: 100%" :src="previewImage" />
+    </a-modal>
   </div>
 </template>
 <script>
-  import { defineComponent, ref, computed, reactive, unref, readonly, toRefs } from 'vue'
-  import { Plus, ZoomIn, Delete, ArrowLeft, ArrowRight, Check } from '@element-plus/icons'
+  import { defineComponent, ref, computed, reactive, toRefs } from 'vue'
+  import { PlusOutlined, ArrowLeftOutlined, ArrowRightOutlined, DeleteOutlined, CheckOutlined } from '@ant-design/icons-vue'
   import { useOss } from '@/components/form/upload/oss'
-  import { ElMessage } from 'element-plus'
+  import { message } from 'ant-design-vue'
   import { useLocal } from '@/components/form/upload/local'
+  import { T } from '@/utils/i18n'
 
   export default defineComponent({
-    name: 'imagesUpload',
+    name: 'ImagesUpload',
     props: {
-      drag: {
-        type: Boolean,
-        default: false,
-      },
       limit: {
         type: Number,
-        default: 0,
+        default: 1,
       },
       beforeUpload: {
         type: Function,
@@ -99,15 +66,19 @@
         type: Boolean,
         default: false,
       },
-      width: {
+      accept: {
         type: String,
-        default: '148px',
-      },
+        default: 'image/*'
+      }
     },
-    components: { Plus, ZoomIn, Delete, ArrowLeft, ArrowRight, Check },
+    components: { PlusOutlined, ArrowLeftOutlined, ArrowRightOutlined, DeleteOutlined, CheckOutlined },
     setup (props, context) {
-
-      let fileList = computed(() => props.modelValue.map(url => { return { url, status: 'success' } }))
+      const fileList = computed({
+        get: () => props.modelValue.map((url, index) => ({ uid: -index, name: url, status: 'done', url })),
+        set: (val) => {
+          context.emit('update:modelValue', val.map(file => file.url))
+        }
+      })
 
       let fileUpload = reactive({
         fileUploadHost: '',
@@ -121,152 +92,66 @@
       } else {
         fileUpload = useLocal(props.beforeUpload, props.host)
       }
-
-      function leftImage (file) {
-        let fList = unref(fileList)
-        const index = fList.findIndex(f => f.url === file.url)
-        if (index === 0 || index === -1) {
-          return
-        }
-        fList[index] = fList.splice(index - 1, 1, fList[index])[0]
-        updateValue(fList)
+      
+      const updateValue = (_fileList) => {
+        context.emit('update:modelValue', _fileList.filter(f => f.status === 'done').map(file => file.url));
       }
 
-      function rightImage (file) {
-        let fList = unref(fileList)
-        const index = fList.findIndex(f => f.url === file.url)
-        if (index === fList.length - 1 || index === -1) {
-          return
-        }
-        fList[index] = fList.splice(index + 1, 1, fList[index])[0]
-        updateValue(fList)
+      const fileRemove = (file) => {
+        const newFileList = fileList.value.filter(f => f.uid !== file.uid)
+        fileList.value = newFileList
       }
 
-      function removeImage (file) {
-        let fList = unref(fileList)
-        const index = fList.findIndex(f => f.url === file.url)
-        fList.splice(index, 1)
-        updateValue(fList)
+      const onError = () => {
+        message.error(T('UploadFailed'))
       }
 
-      function updateValue (_fileList) {
-        let fList = unref(_fileList)
-        context.emit(
-          'update:modelValue',
-          fList.filter(f => f.status === 'success').map(file => file.url),
-        )
-      }
-
-      function fileRemove (file, _fileList) {
-        updateValue(_fileList)
-      }
-
-      function onError () {
-
-      }
-
-      function fileUploadSuccess (response, file, _fileList) {
+      const fileUploadSuccess = (response, file, _fileList) => {
         file.url = response?.data?.url || file.url
-        if (_fileList.every(f => f.status === 'success')) {
+        if (_fileList.every(f => f.status === 'done')) {
           updateValue(_fileList)
         }
       }
 
-      function onExceed () {
-        ElMessage.error('超出数量限制')
+      const onExceed = () => {
+        message.error(`最多上传 ${props.limit} 张图片`)
       }
+      
+      const previewVisible = ref(false);
+      const previewImage = ref('');
+      const previewTitle = ref('');
+
+      const handleCancel = () => {
+        previewVisible.value = false;
+      };
+      
+      const handlePreview = async file => {
+        if (!file.url && !file.preview) {
+          file.preview = await new Promise(resolve => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file.originFileObj);
+            reader.onload = () => resolve(reader.result);
+          });
+        }
+        previewImage.value = file.url || file.preview;
+        previewVisible.value = true;
+        previewTitle.value = file.name || file.url.substring(file.url.lastIndexOf('/') + 1);
+      };
 
       return {
         fileList,
-
         ...toRefs(fileUpload),
-
         onExceed,
         fileRemove,
         onError,
         fileUploadSuccess,
-
-        leftImage,
-        rightImage,
-        removeImage,
+        previewVisible,
+        previewImage,
+        previewTitle,
+        handleCancel,
+        handlePreview,
+        T
       }
     },
   })
 </script>
-
-<style scoped lang="scss">
-  .upload-order-file {
-    ::v-deep(.el-upload-dragger) {
-      border: none;
-      width: 100%;
-      height: 100%;
-    }
-
-    ::v-deep(.el-upload--picture-card) {
-      width: v-bind(width);
-      height: v-bind(width);
-    }
-
-    ::v-deep(.el-upload-list__item) {
-      width: v-bind(width);
-      height: v-bind(width);
-    }
-
-    ::v-deep(.el-progress) {
-      width: v-bind(width) !important;
-      height: v-bind(width) !important;
-    }
-
-    ::v-deep(.el-progress-circle) {
-      width: v-bind(width) !important;
-      height: v-bind(width) !important;
-    }
-
-    .drag-tips {
-      font-size: 12px;
-      color: #999;
-    }
-
-
-    ::v-deep(.el-upload-list__item) {
-      transition: none !important;
-    }
-
-    ::v-deep(.el-upload-list) {
-      transition: none !important;
-    }
-
-    .el-upload-list__item-thumbnail {
-      object-fit: contain;
-    }
-
-    .el-upload-list__item-actions {
-      display: flex;
-      justify-content: space-around;
-      align-items: center;
-
-      &:after {
-        display: none;
-      }
-
-      .el-upload-list__item-icon {
-        cursor: pointer;
-        font-size: 20px;
-        color: #fff;
-      }
-    }
-
-    .default-slot {
-      height: 100%;
-      width: 100%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-
-      .default-icon {
-        margin-top: 0;
-      }
-    }
-  }
-
-</style>

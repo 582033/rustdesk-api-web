@@ -1,20 +1,29 @@
 import Clipboard from 'clipboard'
-import { ElMessage } from 'element-plus'
+import { message } from 'ant-design-vue'
 import { T } from '@/utils/i18n'
 
-export function handleClipboard (text, event) {
-  const clipboard = new Clipboard(event.target.toString(), {
-    text: () => text,
-  })
-  clipboard.on('success', () => {
-    ElMessage.success(T('CopySuccess'))
-    clipboard.destroy()
-  })
-  clipboard.on('error', () => {
-    ElMessage.error(T('CopyFailed'))
-    clipboard.destroy()
-  })
-  clipboard.onClick(event)
+export async function handleClipboard (text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    await navigator.clipboard.writeText(text)
+  } else {
+    // Fallback
+    const textArea = document.createElement('textarea')
+    textArea.value = text
+    textArea.style.position = 'fixed'
+    textArea.style.top = '-9999px'
+    textArea.style.left = '-9999px'
+    document.body.appendChild(textArea)
+    textArea.focus()
+    textArea.select()
+    try {
+      const successful = document.execCommand('copy')
+      if (!successful) {
+        throw new Error('Fallback: Unable to copy')
+      }
+    } finally {
+      document.body.removeChild(textArea)
+    }
+  }
 }
 
 export function copyImage (targetNode) {

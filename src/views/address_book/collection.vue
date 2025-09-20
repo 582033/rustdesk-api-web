@@ -14,6 +14,7 @@
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handlerQuery">{{ T('Filter') }}</el-button>
+          <el-button @click="handlerReset">{{ T('Reset') }}</el-button>
           <el-button type="danger" @click="toAdd">{{ T('Add') }}</el-button>
         </el-form-item>
       </el-form>
@@ -90,12 +91,15 @@
     listQuery,
     getList,
     handlerQuery,
+    handlerReset,
+    handlerReset,
     del,
     formVisible,
     formData,
     toEdit,
     toAdd,
     submit,
+    handlerReset,
   } = useRepositories('admin')
 
   listQuery.is_my = 0

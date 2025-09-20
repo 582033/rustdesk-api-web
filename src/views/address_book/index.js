@@ -1,7 +1,7 @@
 import { reactive, ref } from 'vue'
 import { create as admin_create, list as admin_list, remove as admin_remove, update as admin_update } from '@/api/address_book'
 import { batchUpdateTags, list as my_list, create as my_create, update as my_update, remove as my_remove } from '@/api/my/address_book'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { message, Modal } from 'ant-design-vue'
 import { T } from '@/utils/i18n'
 import { useRepositories as useCollectionRepositories } from '@/views/address_book/collection'
 import { useRepositories as useTagRepositories } from '@/views/tag/index'
@@ -64,18 +64,20 @@ export function useRepositories (api_type = 'my') {
   }
 
   const del = async (row) => {
-    const cf = await ElMessageBox.confirm(T('Confirm?', { param: T('Delete') }), {
-      confirmButtonText: T('Confirm'),
-      cancelButtonText: T('Cancel'),
-      type: 'warning',
-    }).catch(_ => false)
+    const cf = await new Promise(resolve => {
+      Modal.confirm({
+        title: T('Confirm?', { param: T('Delete') }),
+        onOk: () => resolve(true),
+        onCancel: () => resolve(false)
+      })
+    })
     if (!cf) {
       return false
     }
 
     const res = await apis[api_type].remove({ row_id: row.row_id }).catch(_ => false)
     if (res) {
-      ElMessage.success(T('OperationSuccess'))
+      message.success(T('OperationSuccess'))
       getList()
     }
   }
@@ -158,7 +160,7 @@ export function useRepositories (api_type = 'my') {
     const api = formData.row_id ? apis[api_type].update : apis[api_type].create
     const res = await api(formData).catch(_ => false)
     if (res) {
-      ElMessage.success(T('OperationSuccess'))
+      message.success(T('OperationSuccess'))
       formVisible.value = false
       getList()
     }
@@ -252,7 +254,7 @@ export function useBatchUpdateTagsRepositories () {
   const visible = ref(false)
   const show = () => {
     if (formData.value.row_ids.length === 0) {
-      ElMessage.warning(T('PleaseSelectData'))
+      message.warning(T('PleaseSelectData'))
       return
     }
     visible.value = true
@@ -263,16 +265,16 @@ export function useBatchUpdateTagsRepositories () {
   })
   const submit = async () => {
     if (formData.value.row_ids.length === 0) {
-      ElMessage.warning(T('PleaseSelectData'))
+      message.warning(T('PleaseSelectData'))
       return false
     }
     if (formData.value.tags.length === 0) {
-      ElMessage.warning(T('PleaseSelectData'))
+      message.warning(T('PleaseSelectData'))
       return false
     }
     const res = await batchUpdateTags(formData.value).catch(_ => false)
     if (res) {
-      ElMessage.success(T('Success'))
+      message.success(T('Success'))
       visible.value = false
       return true
     }

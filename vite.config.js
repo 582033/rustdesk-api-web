@@ -46,8 +46,6 @@ const conf = {
               case '@popperjs':
               case '@vue':
               case 'axios':
-              case 'element-plus':
-              case '@element-plus':
                 return '_' + arr[0]
               default :
                 return '__vendor'

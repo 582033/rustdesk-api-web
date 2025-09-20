@@ -1,7 +1,7 @@
 import { reactive, ref } from 'vue'
 import { create as admin_create, list as admin_list, remove as admin_remove, update as admin_update } from '@/api/tag'
 import { create as my_create, list as my_list, remove as my_remove, update as my_update } from '@/api/my/tag'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { message, Modal } from 'ant-design-vue'
 import { useRoute } from 'vue-router'
 import { T } from '@/utils/i18n'
 import { useRepositories as useCollectionRepositories } from '@/views/address_book/collection'
@@ -88,18 +88,20 @@ export function useRepositories (api_type = 'my') {
   }
 
   const del = async (row) => {
-    const cf = await ElMessageBox.confirm(T('Confirm?', { param: T('Delete') }), {
-      confirmButtonText: T('Confirm'),
-      cancelButtonText: T('Cancel'),
-      type: 'warning',
-    }).catch(_ => false)
+    const cf = await new Promise(resolve => {
+      Modal.confirm({
+        title: T('Confirm?', { param: T('Delete') }),
+        onOk: () => resolve(true),
+        onCancel: () => resolve(false)
+      })
+    })
     if (!cf) {
       return false
     }
 
     const res = await apis[api_type].remove({ id: row.id }).catch(_ => false)
     if (res) {
-      ElMessage.success(T('OperationSuccess'))
+      message.success(T('OperationSuccess'))
       getList()
     }
   }
@@ -138,7 +140,7 @@ export function useRepositories (api_type = 'my') {
   const submit = async () => {
     console.log(formData)
     if (!formData.color) {
-      ElMessage.error('请选择颜色')
+      message.error('请选择颜色')
       return
     }
     const api = formData.id ? apis[api_type].update : apis[api_type].create
@@ -149,7 +151,7 @@ export function useRepositories (api_type = 'my') {
     console.log(data)
     const res = await api(data).catch(_ => false)
     if (res) {
-      ElMessage.success(T('OperationSuccess'))
+      message.success(T('OperationSuccess'))
       formVisible.value = false
       getList()
     }

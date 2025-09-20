@@ -1,45 +1,33 @@
 <template>
-  <el-form ref="shareform" :model="formData" label-width="120px" label-suffix=" :">
-    <el-form-item :label="T('ID')" prop="id" required>
+  <a-form ref="shareform" :model="formData" layout="vertical">
+    <a-form-item :label="T('ID')" name="id" :rules="[{ required: true }]">
       {{ formData.id }}
-    </el-form-item>
-    <!--    <el-form-item :label="T('PasswordType')">
-          <div>
-            <el-radio-group v-model="formData.password_type" @change="changePwdType">
-              <el-radio value="once">{{ T('OncePassword') }}</el-radio>
-              <el-radio value="fixed">{{ T('FixedPassword') }}</el-radio>
-            </el-radio-group>
-            <div v-if="formData.password_type==='fixed'" style="color: red">
-              {{ T('FixedPasswordWarning') }}
-            </div>
-          </div>
-        </el-form-item>-->
-    <el-form-item :label="T('Password')" prop="password" required>
-      <el-input v-model="formData.password" type="password" show-password></el-input>
-    </el-form-item>
-    <el-form-item :label="T('ExpireTime')" prop="expire" required>
-      <el-select v-model="formData.expire">
-        <el-option
+    </a-form-item>
+    <a-form-item :label="T('Password')" name="password" :rules="[{ required: true }]">
+      <a-input-password v-model:value="formData.password" />
+    </a-form-item>
+    <a-form-item :label="T('ExpireTime')" name="expire" :rules="[{ required: true }]">
+      <a-select v-model:value="formData.expire">
+        <a-select-option
             v-for="item in expireTimes"
             :key="item.value"
-            :label="item.label"
             :value="item.value"
-        ></el-option>
-      </el-select>
-    </el-form-item>
-    <el-form-item v-if="link" :label="T('Link')">
-      <el-input v-model="link" readonly>
-        <template #append>
-          <el-button :icon="CopyDocument" @click="copyLink"/>
+        >{{ item.label }}</a-select-option>
+      </a-select>
+    </a-form-item>
+    <a-form-item v-if="link" :label="T('Link')">
+      <a-input-search v-model:value="link" readonly>
+        <template #enterButton>
+          <a-button @click="copyLink"><CopyOutlined /></a-button>
         </template>
-      </el-input>
-    </el-form-item>
-    <el-form-item>
-      <el-button v-if="!link" @click="cancel">{{ T('Cancel') }}</el-button>
-      <el-button v-if="!link" :loading="loading" @click="submitShare" type="primary">{{ T('Submit') }}</el-button>
-      <el-button v-else @click="cancel" type="success">{{ T('Close') }}</el-button>
-    </el-form-item>
-  </el-form>
+      </a-input-search>
+    </a-form-item>
+    <a-form-item>
+      <a-button v-if="!link" @click="cancel">{{ T('Cancel') }}</a-button>
+      <a-button v-if="!link" :loading="loading" @click="submitShare" type="primary" style="margin-left: 8px;">{{ T('Submit') }}</a-button>
+      <a-button v-else @click="cancel" type="primary">{{ T('Close') }}</a-button>
+    </a-form-item>
+  </a-form>
 </template>
 
 <script setup>
@@ -48,9 +36,7 @@
   import { getV2ShareUrl } from '@/utils/webclient'
   import * as sha256 from 'fast-sha256'
   import { shareByWebClient } from '@/api/address_book'
-  import { CopyDocument } from '@element-plus/icons'
   import { handleClipboard } from '@/utils/clipboard'
-  import { ElMessageBox } from 'element-plus'
 
   const props = defineProps({
     id: String,
@@ -68,7 +54,6 @@
     init()
   })
   const init = () => {
-    console.log('init')
     formData.id = props.id
     formData.hash = props.hash
     formData.password = ''
@@ -86,63 +71,31 @@
     { label: T('Months', { param: 1 }, 1), value: 2592000 },
     { label: T('Forever'), value: 0 },
   ])
-  const changePwdType = (val) => {
-    if (val === 'fixed' && !formData.password) {
-      formData.password = props.hash
-    }
-    if (val === 'once') {
-      formData.password = ''
-    }
-  }
+
   const cancel = () => {
     loading.value = false
     emits('cancel')
     init()
   }
   const loading = ref(false)
-  const submitShare = async () => {
-    if (!formData.password) {
-      return
-    }
-    loading.value = true
-    const _formData = { ...formData }
-    /*if (formData.password !== formData.hash) {
-      const res = await getPeerSlat(formData.id).catch(e => {
-        ElMessageBox.alert(T('Timeout'), T('Error'))
-        return false
-      })
-      if (!res) {
-        loading.value = false
-        return
+  const shareform = ref(null)
+  const submitShare = () => {
+    shareform.value.validate().then(async () => {
+      loading.value = true
+      const _formData = { ...formData }
+      const res = await shareByWebClient(_formData).catch(_ => false)
+      if (res) {
+        link.value = getV2ShareUrl(res.data.share_token)
+        emits('success')
       }
-      const p = hash([formData.password, res.salt])
-      _formData.password = btoa(p.toString().split(',').map((v) => String.fromCharCode(v)).join(''))
-    }*/
-    const res = await shareByWebClient(_formData).catch(_ => false)
-    if (res) {
-      link.value = getV2ShareUrl(res.data.share_token)
-      emits('success')
-    }
-    loading.value = false
+      loading.value = false
+    })
   }
 
   const copyLink = (e) => {
     handleClipboard(link.value, e)
   }
-
-  const hash = (datas) => {
-    const hasher = new sha256.Hash()
-    datas.forEach((data) => {
-      if (typeof data == 'string') {
-        data = new TextEncoder().encode(data)
-      }
-      hasher.update(data)
-    })
-    return hasher.digest()
-  }
-
 </script>
 
 <style scoped lang="scss">
-
 </style>

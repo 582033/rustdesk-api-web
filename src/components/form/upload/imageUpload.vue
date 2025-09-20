@@ -1,51 +1,41 @@
 <template>
   <div class="upload-order-file">
-    <el-upload
-            size="mini"
-            ref="upload"
-            :on-success="fileUploadSuccess"
-            :before-upload="beforeFileUpload"
-            :on-preview="onPreview"
-            :on-remove="fileRemove"
-            :on-error="onError"
-            name="file"
-            :file-list="fileList"
-            :action="fileUploadHost"
-            :data="fileUploadData"
-            :headers="headers"
-            list-type="picture-card"
-            :limit="0"
-            accept="image/*"
+    <a-upload
+        ref="upload"
+        :before-upload="beforeFileUpload"
+        :on-success="fileUploadSuccess"
+        :on-remove="fileRemove"
+        :on-error="onError"
+        name="file"
+        :file-list="fileList"
+        :action="fileUploadHost"
+        :data="fileUploadData"
+        :headers="headers"
+        list-type="picture-card"
+        :accept="accept"
+        @preview="handlePreview"
     >
-      <template #default>
-        <div class="default-slot">
-          <slot name="default">
-            <el-icon class="default-icon">
-              <plus/>
-            </el-icon>
-          </slot>
-        </div>
-      </template>
-    </el-upload>
-    <el-dialog v-model="showPreview" top="5vh">
-      <el-image :src="showImage" class="preview-image" fit="contain"></el-image>
-    </el-dialog>
+      <div v-if="!modelValue">
+        <plus-outlined />
+        <div class="ant-upload-text">{{ T('Upload') }}</div>
+      </div>
+    </a-upload>
+    <a-modal :open="previewVisible" :title="previewTitle" :footer="null" @cancel="handleCancel">
+      <img alt="example" style="width: 100%" :src="previewImage" />
+    </a-modal>
   </div>
 </template>
 <script>
-  import { defineComponent, ref, computed, reactive, unref, readonly, toRefs } from 'vue'
-  import { Plus, ZoomIn, Delete, ArrowLeft, ArrowRight, Check } from '@element-plus/icons'
+  import { defineComponent, ref, computed, reactive, toRefs } from 'vue'
+  import { PlusOutlined } from '@ant-design/icons-vue'
   import { useOss } from '@/components/form/upload/oss'
-  import { ElMessage } from 'element-plus'
+  import { message } from 'ant-design-vue'
   import { useLocal } from '@/components/form/upload/local'
+  import { T } from '@/utils/i18n'
 
   export default defineComponent({
-    name: 'imageUpload',
+    name: 'ImageUpload',
     props: {
-      limit: {
-        type: Number,
-        default: 0,
-      },
       beforeUpload: {
         type: Function,
         default: function () {
@@ -64,17 +54,19 @@
         type: String,
         default: 'local', //local oss
       },
-      width: {
+       accept: {
         type: String,
-        default: '148px',
-      },
+        default: 'image/*'
+      }
     },
-    components: { Plus, ZoomIn, Delete, ArrowLeft, ArrowRight, Check },
+    components: { PlusOutlined },
     setup (props, context) {
-      const showPreview = ref(false)
-      const showImage = ref('')
-
-      let fileList = computed(() => props.modelValue ? [{ url: props.modelValue, status: 'success' }] : [])
+      const fileList = computed({
+        get: () => props.modelValue ? [{ uid: '-1', name: props.modelValue, status: 'done', url: props.modelValue }] : [],
+        set: (val) => {
+          context.emit('update:modelValue', val.length ? val[0].url : '')
+        }
+      })
 
       let fileUpload = reactive({
         fileUploadHost: '',
@@ -84,115 +76,62 @@
       })
 
       if (props.type === 'oss') {
-        fileUpload = useOss(props.beforeUpload, props.multiple)
+        fileUpload = useOss(props.beforeUpload)
       } else {
         fileUpload = useLocal(props.beforeUpload, props.host)
       }
 
-      function removeImage (file) {
-        let fList = unref(fileList)
-        const index = fList.findIndex(f => f.url === file.url)
-        fList.splice(index, 1)
-        updateValue(fList)
+      const updateValue = (_fileList) => {
+        context.emit('update:modelValue', _fileList.length ? _fileList[0].url : '');
       }
 
-      function updateValue (_fileList) {
-        let fList = unref(_fileList)
-        context.emit(
-          'update:modelValue',
-          fList.length ? fList[0].url : '',
-        )
+      const fileRemove = () => {
+        context.emit('update:modelValue', '')
       }
 
-      function fileRemove (file, _fileList) {
-        updateValue(_fileList)
+      const onError = () => {
+        message.error(T('UploadFailed'))
       }
 
-      function onError () {
-
-      }
-
-      function fileUploadSuccess (response, file, _fileList) {
+      const fileUploadSuccess = (response, file, _fileList) => {
         file.url = response?.data?.url || file.url
-        if (_fileList.length > 1) {
-          _fileList.splice(0, 1)
-        }
-        if (_fileList.every(f => f.status === 'success')) {
-          updateValue(_fileList)
-        }
+        updateValue([file])
       }
 
-      function onPreview (file) {
-        showImage.value = file.url
-        showPreview.value = true
-      }
+      const previewVisible = ref(false);
+      const previewImage = ref('');
+      const previewTitle = ref('');
+
+      const handleCancel = () => {
+        previewVisible.value = false;
+      };
+
+      const handlePreview = async file => {
+        if (!file.url && !file.preview) {
+          file.preview = await new Promise(resolve => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file.originFileObj);
+            reader.onload = () => resolve(reader.result);
+          });
+        }
+        previewImage.value = file.url || file.preview;
+        previewVisible.value = true;
+        previewTitle.value = file.name || file.url.substring(file.url.lastIndexOf('/') + 1);
+      };
 
       return {
         fileList,
-
         ...toRefs(fileUpload),
-
         fileRemove,
         onError,
         fileUploadSuccess,
-
-        onPreview,
-        removeImage,
-
-        showPreview,
-        showImage,
+        previewVisible,
+        previewImage,
+        previewTitle,
+        handleCancel,
+        handlePreview,
+        T
       }
     },
   })
 </script>
-
-<style scoped lang="scss">
-  .upload-order-file {
-
-    ::v-deep(.el-upload-list__item-thumbnail) {
-      object-fit: contain;
-
-    }
-
-    ::v-deep(.el-upload--picture-card) {
-      width: v-bind(width);
-      height: v-bind(width);
-    }
-
-    ::v-deep(.el-upload-list__item) {
-      width: v-bind(width);
-      height: v-bind(width);
-    }
-
-    ::v-deep(.el-progress) {
-      width: v-bind(width) !important;
-      height: v-bind(width) !important;
-    }
-
-    ::v-deep(.el-progress-circle) {
-      width: v-bind(width) !important;
-      height: v-bind(width) !important;
-    }
-
-
-    .default-slot {
-      height: 100%;
-      width: 100%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-
-      .default-icon {
-        margin-top: 0;
-      }
-    }
-  }
-
-  .preview-image {
-    width: 100%;
-
-    ::v-deep(img) {
-      max-height: 700px;
-    }
-  }
-</style>

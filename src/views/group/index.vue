@@ -1,80 +1,72 @@
 <template>
   <div>
-    <el-card class="list-query" shadow="hover">
-      <el-form inline label-width="80px">
-        <!--        <el-form-item label="名称">
-                  <el-input v-model="listQuery.name"></el-input>
-                </el-form-item>-->
-        <el-form-item>
-          <el-button type="primary" @click="handlerQuery">{{ T('Filter') }}</el-button>
-          <el-button type="danger" @click="toAdd">{{ T('Add') }}</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
-    <el-card class="list-body" shadow="hover">
-      <el-table :data="listRes.list" v-loading="listRes.loading" border>
-        <el-table-column prop="id" label="ID" align="center"></el-table-column>
-        <el-table-column prop="name" :label="T('Name')" align="center"/>
-        <el-table-column prop="type" :label="T('Type')" align="center">
-          <template #default="{row}">
-            <span v-if="row.type === 1">{{ T('CommonGroup') }}</span>
+    <a-card class="list-query" :bordered="false">
+      <a-form layout="inline">
+        <a-form-item>
+          <a-button type="primary" @click="handlerQuery">{{ T('Filter') }}</a-button>
+          <a-button type="primary" @click="toAdd" style="margin-left: 8px;">{{ T('Add') }}</a-button>
+        </a-form-item>
+      </a-form>
+    </a-card>
+    <a-card class="list-body" :bordered="false">
+      <a-table :data-source="listRes.list" :loading="listRes.loading" :columns="columns" bordered :pagination="false" rowKey="id">
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'type'">
+            <span v-if="record.type === 1">{{ T('CommonGroup') }}</span>
             <span v-else>{{ T('SharedGroup') }}</span>
           </template>
-        </el-table-column>
-        <el-table-column prop="created_at" :label="T('CreatedAt')" align="center"/>
-        <el-table-column prop="updated_at" :label="T('UpdatedAt')" align="center"/>
-        <el-table-column :label="T('Actions')" align="center">
-          <template #default="{row}">
-            <el-button @click="toEdit(row)">{{ T('Edit') }}</el-button>
-            <el-button type="danger" @click="del(row)">{{ T('Delete') }}</el-button>
+          <template v-if="column.key === 'actions'">
+            <a-button size="small" @click="toEdit(record)">{{ T('Edit') }}</a-button>
+            <a-button type="primary" danger size="small" @click="del(record)" style="margin-left: 8px;">{{ T('Delete') }}</a-button>
           </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
-    <el-card class="list-page" shadow="hover">
-      <el-pagination background
-                     layout="prev, pager, next, sizes, jumper"
-                     :page-sizes="[10,20,50,100]"
-                     v-model:page-size="listQuery.page_size"
-                     v-model:current-page="listQuery.page"
-                     :total="listRes.total">
-      </el-pagination>
-    </el-card>
-    <el-dialog v-model="formVisible" :title="!formData.id?T('Create'):T('Update')" width="800">
-      <el-form class="dialog-form" ref="form" :model="formData" label-width="120px">
-        <el-form-item :label="T('Name')" prop="name" required>
-          <el-input v-model="formData.name"></el-input>
-        </el-form-item>
-        <el-form-item :label="T('Type')" prop="type" required>
-          <el-radio-group v-model="formData.type">
-            <el-radio v-for="item in groupTypes" :key="item.value" :label="item.value" style="display: block">
+        </template>
+      </a-table>
+      <a-pagination
+          style="margin-top: 12px; text-align: right;"
+          v-model:current="listQuery.page"
+          v-model:pageSize="listQuery.page_size"
+          :total="listRes.total"
+          show-size-changer
+          show-quick-jumper
+          :show-total="total => `${T('Total')} ${total} ${T('Items')}`"
+      />
+    </a-card>
+    <a-modal v-model:open="formVisible" :title="!formData.id ? T('Create') : T('Update')" @ok="submit" @cancel="formVisible = false">
+      <a-form class="dialog-form" :model="formData" layout="vertical" style="margin-top: 20px;">
+        <a-form-item :label="T('Name')" name="name" :rules="[{ required: true }]">
+          <a-input v-model:value="formData.name" />
+        </a-form-item>
+        <a-form-item :label="T('Type')" name="type" :rules="[{ required: true }]">
+          <a-radio-group v-model:value="formData.type">
+            <a-radio v-for="item in groupTypes" :key="item.value" :value="item.value" style="display: block; height: 30px; line-height: 30px;">
               {{ item.label }}
-              <span style="font-size: 12px;color: #999">{{ item.note }}</span>
-            </el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item>
-          <el-button @click="formVisible = false">{{ T('Cancel') }}</el-button>
-          <el-button @click="submit" type="primary">{{ T('Submit') }}</el-button>
-        </el-form-item>
-      </el-form>
-    </el-dialog>
+              <span style="font-size: 12px; color: #999;">{{ item.note }}</span>
+            </a-radio>
+          </a-radio-group>
+        </a-form-item>
+      </a-form>
+    </a-modal>
   </div>
 </template>
 
 <script setup>
-  import { onMounted, reactive, watch, ref, onActivated } from 'vue'
-  import { list, create, update, detail, remove } from '@/api/group'
-  import { ElMessage, ElMessageBox } from 'element-plus'
+  import { onMounted, reactive, watch, ref, onActivated, computed, h } from 'vue'
+  import { list, create, update, remove } from '@/api/group'
+  import { message, Modal } from 'ant-design-vue'
+  import { ExclamationCircleOutlined } from '@ant-design/icons-vue'
   import { T } from '@/utils/i18n'
 
-  const listRes = reactive({
-    list: [], total: 0, loading: false,
-  })
-  const listQuery = reactive({
-    page: 1,
-    page_size: 10,
-  })
+  const listRes = reactive({ list: [], total: 0, loading: false })
+  const listQuery = reactive({ page: 1, page_size: 10 })
+
+  const columns = computed(() => [
+    { title: 'ID', dataIndex: 'id', key: 'id', align: 'center' },
+    { title: T('Name'), dataIndex: 'name', key: 'name', align: 'center' },
+    { title: T('Type'), key: 'type', align: 'center' },
+    { title: T('CreatedAt'), dataIndex: 'created_at', key: 'created_at', align: 'center' },
+    { title: T('UpdatedAt'), dataIndex: 'updated_at', key: 'updated_at', align: 'center' },
+    { title: T('Actions'), key: 'actions', align: 'center' },
+  ]);
 
   const getList = async () => {
     listRes.loading = true
@@ -86,34 +78,30 @@
     }
   }
   const handlerQuery = () => {
-    if (listQuery.page === 1) {
-      getList()
-    } else {
-      listQuery.page = 1
-    }
+    if (listQuery.page === 1) getList()
+    else listQuery.page = 1
   }
 
-  const del = async (row) => {
-    const cf = await ElMessageBox.confirm(T('Confirm?', { param: T('Delete') }), {
-      confirmButtonText: T('Confirm'),
-      cancelButtonText: T('Cancel'),
-      type: 'warning',
-    }).catch(_ => false)
-    if (!cf) {
-      return false
-    }
-
-    const res = await remove({ id: row.id }).catch(_ => false)
-    if (res) {
-      ElMessage.success(T('OperationSuccess'))
-      getList()
-    }
+  const del = (row) => {
+    Modal.confirm({
+      title: T('Confirm?'),
+      icon: h(ExclamationCircleOutlined),
+      content: T('Confirm?', { param: T('Delete') }),
+      okText: T('Confirm'),
+      cancelText: T('Cancel'),
+      onOk: async () => {
+        const res = await remove({ id: row.id }).catch(_ => false)
+        if (res) {
+          message.success(T('OperationSuccess'))
+          getList()
+        }
+      }
+    });
   }
   onMounted(getList)
   onActivated(getList)
 
   watch(() => listQuery.page, getList)
-
   watch(() => listQuery.page_size, handlerQuery)
 
   const groupTypes = [
@@ -121,11 +109,7 @@
     { label: T('SharedGroup'), value: 2, note: T('SharedGroupNote') },
   ]
   const formVisible = ref(false)
-  const formData = reactive({
-    id: 0,
-    name: '',
-    type: 1,
-  })
+  const formData = reactive({ id: 0, name: '', type: 1 })
 
   const toEdit = (row) => {
     formVisible.value = true
@@ -143,14 +127,12 @@
     const api = formData.id ? update : create
     const res = await api(formData).catch(_ => false)
     if (res) {
-      ElMessage.success(T('OperationSuccess'))
+      message.success(T('OperationSuccess'))
       formVisible.value = false
       getList()
     }
   }
-
 </script>
 
 <style scoped lang="scss">
-
 </style>

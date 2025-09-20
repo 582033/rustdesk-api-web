@@ -3,27 +3,32 @@
     <div class="login-card">
       <img src="@/assets/logo.png" alt="logo" class="login-logo"/>
 
-      <el-form v-if="!disablePwd" label-position="top" class="login-form">
-        <el-form-item :label="T('Username')">
-          <el-input v-model="form.username" type="username" class="login-input"></el-input>
-        </el-form-item>
+      <a-form v-if="!disablePwd" layout="vertical" class="login-form" :model="form">
+        <a-form-item :label="T('Username')" name="username">
+          <a-input v-model:value="form.username" type="username" class="login-input">
+            <template #prefix><UserOutlined style="color: rgba(0,0,0,.25)" /></template>
+          </a-input>
+        </a-form-item>
 
-        <el-form-item :label="T('Password')">
-          <el-input v-model="form.password" type="password" @keyup.enter.native="login" show-password
-                    class="login-input"></el-input>
-        </el-form-item>
-        <el-form-item :label="T('Captcha')" v-if="captchaCode">
-          <el-input v-model="form.captcha" @keyup.enter.native="login"  class="login-input captcha-input">
-            <template #append>
+        <a-form-item :label="T('Password')" name="password">
+          <a-input-password v-model:value="form.password" @keyup.enter="login" class="login-input">
+            <template #prefix><LockOutlined style="color: rgba(0,0,0,.25)" /></template>
+          </a-input-password>
+        </a-form-item>
+
+        <a-form-item :label="T('Captcha')" v-if="captchaCode" name="captcha">
+          <a-input v-model:value="form.captcha" @keyup.enter="login" class="login-input captcha-input">
+            <template #addonAfter>
               <img :src="captchaCode.b64" @click="loadCaptcha" class="captcha" alt="captcha"/>
             </template>
-          </el-input>
-        </el-form-item>
-        <el-form-item>
-          <el-button @click="login" type="primary" class="login-button">{{ T('Login') }}</el-button>
-          <el-button v-if="allowRegister" @click="register" class="login-button">{{ T('Register') }}</el-button>
-        </el-form-item>
-      </el-form>
+          </a-input>
+        </a-form-item>
+
+        <a-form-item>
+          <a-button @click="login" type="primary" class="login-button" block>{{ T('Login') }}</a-button>
+          <a-button v-if="allowRegister" @click="register" class="login-button" block>{{ T('Register') }}</a-button>
+        </a-form-item>
+      </a-form>
 
       <div class="divider" v-if="options.length > 0 && !disablePwd">
         <span>{{ T('or login in with') }}</span>
@@ -31,10 +36,10 @@
 
       <div class="oidc-options">
         <div v-for="(option, index) in options" :key="index" class="oidc-option">
-          <el-button @click="handleOIDCLogin(option.name)" class="oidc-btn">
+          <a-button @click="handleOIDCLogin(option.name)" class="oidc-btn" block>
             <img :src="getProviderImage(option.name)" alt="provider" class="oidc-icon"/>
             <span>{{ T(option.name) }}</span>
-          </el-button>
+          </a-button>
         </div>
       </div>
     </div>
@@ -44,7 +49,7 @@
 <script setup>
   import { reactive, onMounted, ref } from 'vue'
   import { useUserStore } from '@/store/user'
-  import { ElMessage } from 'element-plus'
+  import { message } from 'ant-design-vue';
   import { T } from '@/utils/i18n'
   import { useRoute, useRouter } from 'vue-router'
   import { loginOptions, captcha } from '@/api/login'
@@ -86,7 +91,7 @@
   const login = async () => {
     const res = await userStore.login(form).catch(e => e)
     if (!res.code) {
-      ElMessage.success(T('LoginSuccess'))
+      message.success(T('LoginSuccess'))
       router.push({ path: redirect || '/', replace: true })
       return
     }
@@ -154,7 +159,7 @@
       if (res) {
         // 删除code，确保跳转之前对code进行清楚
         removeCode()
-        ElMessage.success(T('LoginSuccess'))
+        message.success(T('LoginSuccess'))
         router.push({ path: redirect || '/', replace: true })
       }
     } else {
@@ -174,14 +179,14 @@
   justify-content: center;
   align-items: center;
   height: 100vh;
-  background-color: #2d3a4b;
+  background-color: #f0f2f5;
   padding: 20px;
   box-sizing: border-box;
 }
 
 .login-card {
   width: 360px;
-  background-color: #283342;
+  background-color: #ffffff;
   padding: 40px;
   border-radius: 8px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
@@ -203,21 +208,14 @@ h1 {
   .captcha{
     cursor: pointer;
     width: 150px;
-  }
-}
-.captcha-input{
-  :deep(.el-input-group__append) {
-    border-radius: 5px;
-    padding: 0;
-    overflow: hidden;
+    height: 40px;
   }
 }
 
 .login-button {
   width: 100%;
   height: 40px;
-  margin-bottom: 20px;
-  margin-left: 0;
+  margin-bottom: 10px;
 }
 
 .divider {
@@ -257,12 +255,6 @@ h1 {
   gap: 10px;
   width: 100%;
   height: 50px;
-  background-color: white;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  color: black;
-  font-size: 14px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .oidc-icon {
@@ -278,20 +270,7 @@ h1 {
   display: block;
 }
 
-.el-form-item {
-  ::v-deep(.el-form-item__label) {
-    color: #fff;
-  }
-
-  .el-input {
-    ::v-deep(.el-input__wrapper) {
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      background: transparent;
-    }
-
-    ::v-deep(input) {
-      color: #fff;
-    }
-  }
+:deep(.ant-form-item-label > label) {
+  color: #555;
 }
 </style>

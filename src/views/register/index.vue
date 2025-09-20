@@ -2,37 +2,36 @@
   <div class="login-container">
     <div class="login-card">
       <img src="@/assets/logo.png" alt="logo" class="login-logo"/>
-      <el-form ref="f" :model="form" label-position="top" class="login-form" :rules="rules">
-        <el-form-item :label="T('Username')" prop="username">
-          <el-input v-model="form.username" class="login-input"></el-input>
-        </el-form-item>
+      <a-form ref="f" :model="form" layout="vertical" class="login-form" :rules="rules">
+        <a-form-item :label="T('Username')" name="username">
+          <a-input v-model:value="form.username" class="login-input"></a-input>
+        </a-form-item>
 
-        <el-form-item :label="T('Email')" prop="email">
-          <el-input v-model="form.email" class="login-input"></el-input>
-        </el-form-item>
+        <a-form-item :label="T('Email')" name="email">
+          <a-input v-model:value="form.email" class="login-input"></a-input>
+        </a-form-item>
 
-        <el-form-item :label="T('Password')" prop="password">
-          <el-input v-model="form.password" type="password" show-password
-                    class="login-input"></el-input>
-        </el-form-item>
-        <el-form-item :label="T('ConfirmPassword')" prop="confirm_password">
-          <el-input v-model="form.confirm_password" type="password" @keyup.enter.native="submit" show-password
-                    class="login-input"></el-input>
-        </el-form-item>
-        <el-form-item label="">
-          <el-button @click="submit" class="login-button" type="success">{{ T('Submit') }}</el-button>
-          <el-button @click="toLogin" class="login-button">{{ T('ToLogin') }}</el-button>
-        </el-form-item>
-      </el-form>
+        <a-form-item :label="T('Password')" name="password">
+          <a-input-password v-model:value="form.password" class="login-input"></a-input-password>
+        </a-form-item>
+        <a-form-item :label="T('ConfirmPassword')" name="confirm_password">
+          <a-input-password v-model:value="form.confirm_password" @keyup.enter="submit"
+                            class="login-input"></a-input-password>
+        </a-form-item>
+        <a-form-item>
+          <a-button @click="submit" class="login-button" type="primary">{{ T('Submit') }}</a-button>
+          <a-button @click="toLogin" class="login-button" style="margin-top: 8px;">{{ T('ToLogin') }}</a-button>
+        </a-form-item>
+      </a-form>
     </div>
   </div>
 </template>
 
 <script setup>
   import { reactive, ref } from 'vue'
-  import { ElMessage } from 'element-plus'
+  import { message } from 'ant-design-vue'
   import { T } from '@/utils/i18n'
-  import { useRoute, useRouter } from 'vue-router'
+  import { useRouter } from 'vue-router'
   import { register } from '@/api/user'
   import { useUserStore } from '@/store/user'
   import { useAppStore } from '@/store/app'
@@ -49,9 +48,6 @@
     username: [
       { required: true, message: T('ParamRequired', { param: T('Username') }), trigger: 'blur' },
     ],
-    // email: [
-    //   { required: true, message: T('ParamRequired', { param: T('Email') }), trigger: 'blur' },
-    // ],
     password: [
       { required: true, message: T('ParamRequired', { param: T('Password') }), trigger: 'blur' },
     ],
@@ -80,12 +76,11 @@
     }
     userStore.saveUserData(res.data)
     useAppStore().loadConfig()
-    ElMessage.success('Submit')
+    message.success('Submit')
     router.push('/')
   }
   const toLogin = () => {
     router.push('/login')
-
   }
 </script>
 
@@ -138,20 +133,17 @@ h1 {
   display: block;
 }
 
-.el-form-item {
-  ::v-deep(.el-form-item__label) {
-    color: #fff;
-  }
+:deep(.ant-form-item-label > label) {
+  color: #fff;
+}
 
-  .el-input {
-    ::v-deep(.el-input__wrapper) {
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      background: transparent;
-    }
+:deep(.ant-input), :deep(.ant-input-password) {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
+  color: #fff;
+}
 
-    ::v-deep(input) {
-      color: #fff;
-    }
-  }
+:deep(.ant-input-password .ant-input) {
+  background: transparent;
 }
 </style>

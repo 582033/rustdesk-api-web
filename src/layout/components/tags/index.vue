@@ -1,14 +1,14 @@
 <template>
-  <el-tag v-for="(t, i) in tags"
-          :key="t.name"
-          class="tag"
-          :closable="t.closeable"
-          @close="close(t)"
-          @click="toTag(t)"
-          :type="t.active?'primary':'info'"
-          :effect="t.active?'dark':'plain'">
+  <a-tag v-for="(t, i) in tags"
+         :key="t.name"
+         class="tag"
+         :closable="t.closeable"
+         @close="close(t)"
+         @click="toTag(t)"
+         :class="{'active': t.active}"
+  >
     {{ T(t.title) }}
-  </el-tag>
+  </a-tag>
 </template>
 
 <script>
@@ -74,10 +74,25 @@
 <style lang="scss" scoped>
 
 .tag {
-  border-radius: 0;
   cursor: pointer;
+  padding: 6px 12px;
+  margin-right: 8px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  transition: all 0.2s ease-in-out;
+  background-color: #fafafa;
+
+  &:hover {
+    border-color: var(--primaryColor);
+    color: var(--primaryColor);
+  }
 
   &.active {
+    background-color: var(--basicWhite);
+    color: var(--primaryColor);
+    border-color: #d9d9d9;
+    border-bottom: 2px solid var(--primaryColor);
+    border-radius: 4px 4px 0 0;
   }
 }
 </style>

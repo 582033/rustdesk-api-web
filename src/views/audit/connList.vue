@@ -1,81 +1,85 @@
 <template>
-  <div>
-    <el-card class="list-query" shadow="hover">
-      <el-form inline label-width="80px">
-        <el-form-item :label="T('Peer')">
-          <el-input v-model="listQuery.peer_id" clearable></el-input>
-        </el-form-item>
-        <el-form-item :label="T('FromPeer')">
-          <el-input v-model="listQuery.from_peer" clearable></el-input>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handlerQuery">{{ T('Filter') }}</el-button>
-          <el-button type="danger" @click="toBatchDelete">{{ T('BatchDelete') }}</el-button>
-          <el-button type="success" @click="toExport">{{ T('Export') }}</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
-    <el-card class="list-body" shadow="hover">
-      <el-table :data="listRes.list" v-loading="listRes.loading" border @selection-change="handleSelectionChange">
-        <el-table-column type="selection" align="center" width="50"/>
-        <el-table-column prop="id" label="ID" align="center" width="100"/>
-        <el-table-column :label="T('Peer')" prop="peer_id" align="center" width="120"/>
-        <el-table-column :label="T('FromPeer')" prop="from_peer" align="center" width="120"/>
-        <el-table-column :label="T('FromName')" prop="from_name" align="center" width="120"/>
-        <el-table-column :label="T('Ip')" prop="ip" align="center" width="120"/>
-        <el-table-column pop="type" :label="T('Type')" align="center" width="120">
-          <template #default="{row}">
-            <el-tag v-if="row.type === 1" type="warning">{{ T('File') }}</el-tag>
-            <el-tag v-else>{{ T('Common') }}</el-tag>
+  <div class="container">
+    <a-card class="list-query" :bordered="false">
+      <a-form layout="inline" :model="listQuery">
+        <a-form-item :label="T('Peer')"><a-input v-model:value="listQuery.peer_id" clearable /></a-form-item>
+        <a-form-item :label="T('FromPeer')"><a-input v-model:value="listQuery.from_peer" clearable /></a-form-item>
+        <a-form-item>
+          <a-button type="primary" @click="handlerQuery">{{ T('Filter') }}</a-button>
+          <a-button type="primary" danger @click="toBatchDelete" style="margin-left: 8px;">{{ T('BatchDelete') }}</a-button>
+          <a-button type="primary" @click="toExport" style="margin-left: 8px;">{{ T('Export') }}</a-button>
+        </a-form-item>
+      </a-form>
+    </a-card>
+    <a-card class="list-body" :bordered="false">
+      <a-table :data-source="listRes.list" :loading="listRes.loading" :columns="columns" bordered :pagination="false" :row-selection="{ selectedRowKeys: selectedRowKeys, onChange: onSelectChange }" rowKey="id">
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'created_at'">
+            {{ formatTime(record.created_at) }}
           </template>
-        </el-table-column>
-        <el-table-column prop="uuid" label="uuid" align="center" width="120" show-overflow-tooltip/>
-        <el-table-column prop="created_at" :label="T('CreatedAt')" align="center"/>
-        <el-table-column :label="T('CloseTime')" prop="close_time" align="center"/>
-        <el-table-column :label="T('Actions')" align="center" width="150">
-          <template #default="{row}">
-            <el-button type="danger" @click="del(row)">{{ T('Delete') }}</el-button>
+          <template v-if="column.key === 'close_time'">
+            {{ formatTime(record.close_time) }}
           </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
-    <el-card class="list-page" shadow="hover">
-      <el-pagination background
-                     layout="prev, pager, next, sizes, jumper"
-                     :page-sizes="[10,20,50,100]"
-                     v-model:page-size="listQuery.page_size"
-                     v-model:current-page="listQuery.page"
-                     :total="listRes.total">
-      </el-pagination>
-    </el-card>
+          <template v-if="column.key === 'type'">
+            <a-tag v-if="record.type === 1" color="warning">{{ T('File') }}</a-tag>
+            <a-tag v-else>{{ T('Common') }}</a-tag>
+          </template>
+          <template v-if="column.key === 'actions'">
+            <a-button type="primary" danger size="small" @click="del(record)">{{ T('Delete') }}</a-button>
+          </template>
+        </template>
+      </a-table>
+    </a-card>
+    <a-card class="list-page" :bordered="false">
+      <a-pagination
+          style="margin-top: 12px; text-align: right;"
+          v-model:current="listQuery.page"
+          v-model:pageSize="listQuery.page_size"
+          :total="listRes.total"
+          show-size-changer
+          show-quick-jumper
+          :show-total="total => `${T('Total')} ${total} ${T('Items')}`"
+      />
+    </a-card>
   </div>
 </template>
 
 <script setup>
-  import { onActivated, onMounted, ref, watch } from 'vue'
+  import { onActivated, onMounted, ref, watch, computed } from 'vue'
   import { useRepositories } from '@/views/audit/reponsitories'
   import { T } from '@/utils/i18n'
+  import { formatTime } from '@/utils/time'
 
   const {
-    listRes,
-    listQuery,
-    getList,
-    handlerQuery,
-    del,
-    batchdel,
-    toExport,
+    listRes, listQuery, getList, handlerQuery, del, batchdel, toExport,
   } = useRepositories()
+
+  const columns = computed(() => [
+    { title: 'ID', dataIndex: 'id', key: 'id', align: 'center', width: 100 },
+    { title: T('Peer'), dataIndex: 'peer_id', key: 'peer_id', align: 'center', width: 120 },
+    { title: T('FromPeer'), dataIndex: 'from_peer', key: 'from_peer', align: 'center', width: 120 },
+    { title: T('FromName'), dataIndex: 'from_name', key: 'from_name', align: 'center', width: 120 },
+    { title: T('Ip'), dataIndex: 'ip', key: 'ip', align: 'center', width: 120 },
+    { title: T('Type'), key: 'type', align: 'center', width: 120 },
+    { title: 'UUID', dataIndex: 'uuid', key: 'uuid', align: 'center', width: 120, ellipsis: true },
+    { title: T('CreatedAt'), dataIndex: 'created_at', key: 'created_at', align: 'center', width: 200 },
+    { title: T('CloseTime'), dataIndex: 'close_time', key: 'close_time', align: 'center', width: 200 },
+    { title: T('Actions'), key: 'actions', align: 'center', width: 150 },
+  ]);
 
   onMounted(getList)
   onActivated(getList)
 
   watch(() => listQuery.page, getList)
-
   watch(() => listQuery.page_size, handlerQuery)
+
+  const selectedRowKeys = ref([]);
+  const onSelectChange = (keys, selectedRows) => {
+    selectedRowKeys.value = keys;
+    multipleSelection.value = selectedRows;
+  };
+
   const multipleSelection = ref([])
-  const handleSelectionChange = (val) => {
-    multipleSelection.value = val
-  }
   const toBatchDelete = () => {
     if (multipleSelection.value.length === 0) {
       return
@@ -85,5 +89,22 @@
 </script>
 
 <style scoped lang="scss">
+.container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 
+  .list-query {
+    margin-bottom: 12px;
+  }
+
+  .list-body {
+    flex: 1;
+    overflow: auto;
+  }
+
+  .list-page {
+    margin-top: 12px;
+  }
+}
 </style>

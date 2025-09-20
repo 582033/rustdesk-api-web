@@ -1,10 +1,10 @@
 <template>
-  <el-container class="address-book-con">
-    <el-aside width="200px" class="aside">
-      <el-select style="width: 100%;" v-model="listQuery.collection_id" filterable>
-        <el-option :value="0" :label="T('MyAddressBook')"></el-option>
-        <el-option v-for="c in collectionListRes.list" :key="c.id" :label="c.name" :value="c.id"></el-option>
-      </el-select>
+  <div class="address-book-con">
+    <div class="aside">
+      <a-select style="width: 100%;" v-model:value="listQuery.collection_id" filterable>
+        <a-select-option :value="0">{{ T('MyAddressBook') }}</a-select-option>
+        <a-select-option v-for="c in collectionListRes.list" :key="c.id" :value="c.id">{{ c.name }}</a-select-option>
+      </a-select>
       <div class="aside-tags">
         <div class="top" style="width: 100%">标签</div>
         <div v-for="t in tagListRes.list"
@@ -17,155 +17,122 @@
         </div>
 
       </div>
-    </el-aside>
+    </div>
 
-    <el-main class="con">
-      <el-card class="list-query" shadow="hover">
-        <el-form inline label-width="80px">
-<!--          <el-form-item :label="T('Name')">
-            <el-select v-model="listQuery.collection_id" clearable>
-              <el-option :value="0" :label="T('MyAddressBook')"></el-option>
-              <el-option v-for="c in collectionListRes.list" :key="c.id" :label="c.name" :value="c.id"></el-option>
-            </el-select>
-          </el-form-item>-->
-          <el-form-item :label="T('Id')">
-            <el-input v-model="listQuery.id" clearable></el-input>
-          </el-form-item>
-          <el-form-item :label="T('Username')">
-            <el-input v-model="listQuery.username" clearable></el-input>
-          </el-form-item>
-          <el-form-item :label="T('Hostname')">
-            <el-input v-model="listQuery.hostname" clearable></el-input>
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" @click="handlerQuery">{{ T('Filter') }}</el-button>
-            <el-button type="danger" @click="toAdd">{{ T('Add') }}</el-button>
-          </el-form-item>
-        </el-form>
-      </el-card>
-      <el-card class="list-body" shadow="hover">
-        <!--      <el-tag type="danger" style="margin-bottom: 10px">不建议在此操作地址簿，可能会造成数据不同步</el-tag>-->
-        <el-table :data="listRes.list" v-loading="listRes.loading" border>
-          <el-table-column prop="id" label="ID" align="center" width="200">
-            <template #default="{row}">
-              <span>{{ row.id }} <el-icon @click="handleClipboard(row.id, $event)"><CopyDocument/></el-icon></span>
+    <div class="con">
+      <a-card class="list-query">
+        <a-form layout="inline">
+          <a-form-item :label="T('Id')">
+            <a-input v-model:value="listQuery.id" clearable></a-input>
+          </a-form-item>
+          <a-form-item :label="T('Username')">
+            <a-input v-model:value="listQuery.username" clearable></a-input>
+          </a-form-item>
+          <a-form-item :label="T('Hostname')">
+            <a-input v-model:value="listQuery.hostname" clearable></a-input>
+          </a-form-item>
+          <a-form-item>
+            <a-button type="primary" @click="handlerQuery">{{ T('Filter') }}</a-button>
+            <a-button danger @click="toAdd" style="margin-left: 8px;">{{ T('Add') }}</a-button>
+          </a-form-item>
+        </a-form>
+      </a-card>
+      <a-card class="list-body" style="margin-top: 16px;">
+        <a-table :data-source="listRes.list" :loading="listRes.loading" bordered :pagination="false" :row-key="record => record.id">
+          <a-table-column key="id" title="ID" data-index="id" align="center" width="200">
+            <template #default="{ text: id }">
+              <span>{{ id }} <CopyOutlined @click="handleClipboard(id)"/></span>
             </template>
-          </el-table-column>
-          <el-table-column prop="collection_id" :label="T('Name')" align="center" width="150">
-            <template #default="{row}">
-              <span v-if="row.collection_id === 0">{{ T('MyAddressBook') }}</span>
-              <span v-else>{{ collectionListRes.list.find(c => c.id === row.collection_id)?.name }}</span>
+          </a-table-column>
+          <a-table-column key="collection_id" :title="T('Name')" data-index="collection_id" align="center" width="150">
+            <template #default="{ text: collection_id }">
+              <span v-if="collection_id === 0">{{ T('MyAddressBook') }}</span>
+              <span v-else>{{ collectionListRes.list.find(c => c.id === collection_id)?.name }}</span>
             </template>
-          </el-table-column>
-          <el-table-column prop="username" :label="T('Username')" align="center" width="150"/>
-          <el-table-column prop="hostname" :label="T('Hostname')" align="center" width="150"/>
-          <el-table-column prop="platform" :label="T('Platform')" align="center" width="120"/>
-          <el-table-column prop="tags" :label="T('Tags')" align="center"/>
-          <!--        <el-table-column prop="created_at" label="创建时间" align="center"/>-->
-          <!--        <el-table-column prop="updated_at" label="更新时间" align="center"/>-->
-          <el-table-column prop="alias" :label="T('Alias')" align="center" width="150"/>
-          <el-table-column prop="hash" :label="T('Hash')" align="center" width="150" show-overflow-tooltip/>
-          <el-table-column :label="T('Actions')" align="center" class-name="table-actions" width="600" fixed="right">
-            <template #default="{row}">
-              <el-button type="success" @click="connectByClient(row.id)">{{ T('Link') }}</el-button>
-              <el-button v-if="appStore.setting.appConfig.web_client" type="success" @click="toWebClientLink(row)">Web Client</el-button>
-              <el-button v-if="appStore.setting.appConfig.web_client" type="primary" @click="toShowShare(row)">{{ T('ShareByWebClient') }}</el-button>
-              <el-button @click="toEdit(row)">{{ T('Edit') }}</el-button>
-              <el-button type="danger" @click="del(row)">{{ T('Delete') }}</el-button>
+          </a-table-column>
+          <a-table-column key="username" :title="T('Username')" data-index="username" align="center" width="150"/>
+          <a-table-column key="hostname" :title="T('Hostname')" data-index="hostname" align="center" width="150"/>
+          <a-table-column key="platform" :title="T('Platform')" data-index="platform" align="center" width="120"/>
+          <a-table-column key="tags" :title="T('Tags')" data-index="tags" align="center"/>
+          <a-table-column key="alias" :title="T('Alias')" data-index="alias" align="center" width="150"/>
+          <a-table-column key="hash" :title="T('Hash')" data-index="hash" align="center" width="150" :ellipsis="true"/>
+          <a-table-column key="actions" :title="T('Actions')" align="center" class-name="table-actions" width="600" fixed="right">
+            <template #default="{ record }">
+              <a-button type="primary" ghost @click="connectByClient(record.id)">{{ T('Link') }}</a-button>
+              <a-button v-if="appStore.setting.appConfig.web_client" type="primary" ghost @click="toWebClientLink(record)" style="margin-left: 8px;">Web Client</a-button>
+              <a-button v-if="appStore.setting.appConfig.web_client" type="primary" @click="toShowShare(record)" style="margin-left: 8px;">{{ T('ShareByWebClient') }}</a-button>
+              <a-button @click="toEdit(record)" style="margin-left: 8px;">{{ T('Edit') }}</a-button>
+              <a-button danger @click="del(record)" style="margin-left: 8px;">{{ T('Delete') }}</a-button>
             </template>
-          </el-table-column>
-        </el-table>
-      </el-card>
-      <el-card class="list-page" shadow="hover">
-        <el-pagination background
-                       layout="prev, pager, next, sizes, jumper"
-                       :page-sizes="[10,20,50,100]"
-                       v-model:page-size="listQuery.page_size"
-                       v-model:current-page="listQuery.page"
-                       :total="listRes.total">
-        </el-pagination>
-      </el-card>
-    </el-main>
+          </a-table-column>
+        </a-table>
+      </a-card>
+      <a-card class="list-page" style="margin-top: 16px;">
+        <a-pagination
+            v-model:current="listQuery.page"
+            v-model:pageSize="listQuery.page_size"
+            :total="listRes.total"
+            show-size-changer
+            show-quick-jumper
+            :show-total="total => `${T('Total')} ${total} ${T('Items')}`"
+        />
+      </a-card>
+    </div>
 
 
-    <el-dialog v-model="formVisible" width="800" :title="!formData.row_id?T('Create') :T('Update') ">
-      <el-form class="dialog-form" ref="form" :model="formData" label-width="120px">
-        <el-form-item label="ID" prop="id" required>
-          <el-input v-model="formData.id"></el-input>
-        </el-form-item>
-        <el-form-item :label="T('Username')" prop="username">
-          <el-input v-model="formData.username"></el-input>
-        </el-form-item>
-        <el-form-item :label="T('Alias')" prop="alias">
-          <el-input v-model="formData.alias"></el-input>
-        </el-form-item>
-        <el-form-item :label="T('Hash')" prop="hash">
-          <el-input v-model="formData.hash"></el-input>
-        </el-form-item>
-        <el-form-item :label="T('Hostname')" prop="hostname">
-          <el-input v-model="formData.hostname"></el-input>
-        </el-form-item>
-        <!--        <el-form-item :label="T('LoginName')" prop="loginName">
-                  <el-input v-model="formData.loginName"></el-input>
-                </el-form-item>-->
-        <!--        <el-form-item :label="T('Password')" prop="password">
-                          <el-input v-model="formData.password"></el-input>
-                        </el-form-item>-->
-        <el-form-item :label="T('Platform')" prop="platform">
-          <el-select v-model="formData.platform">
-            <el-option
+    <a-modal v-model:open="formVisible" width="800" :title="!formData.row_id?T('Create') :T('Update') ">
+      <a-form class="dialog-form" ref="form" :model="formData" layout="vertical">
+        <a-form-item label="ID" name="id" :rules="[{ required: true }]">
+          <a-input v-model:value="formData.id"></a-input>
+        </a-form-item>
+        <a-form-item :label="T('Username')" name="username">
+          <a-input v-model:value="formData.username"></a-input>
+        </a-form-item>
+        <a-form-item :label="T('Alias')" name="alias">
+          <a-input v-model:value="formData.alias"></a-input>
+        </a-form-item>
+        <a-form-item :label="T('Hash')" name="hash">
+          <a-input v-model:value="formData.hash"></a-input>
+        </a-form-item>
+        <a-form-item :label="T('Hostname')" name="hostname">
+          <a-input v-model:value="formData.hostname"></a-input>
+        </a-form-item>
+        <a-form-item :label="T('Platform')" name="platform">
+          <a-select v-model:value="formData.platform">
+            <a-select-option
                 v-for="item in platformList"
                 :key="item.value"
-                :label="item.label"
                 :value="item.value"
-            ></el-option>
-          </el-select>
-        </el-form-item>
+            >{{ item.label }}</a-select-option>
+          </a-select>
+        </a-form-item>
 
-        <el-form-item :label="T('Tags')" prop="tags">
-          <el-select v-model="formData.tags" multiple>
-            <el-option
+        <a-form-item :label="T('Tags')" name="tags">
+          <a-select v-model:value="formData.tags" mode="multiple">
+            <a-select-option
                 v-for="item in tagList"
                 :key="item.name"
-                :label="item.name"
                 :value="item.name"
-            ></el-option>
-          </el-select>
-        </el-form-item>
-        <!-- <el-form-item label="强制中继" prop="forceAlwaysRelay" required>
-                 <el-switch v-model="formData.forceAlwaysRelay"></el-switch>
-               </el-form-item>
-          <el-form-item label="在线" prop="online">
-                 <el-switch v-model="formData.online"></el-switch>
-               </el-form-item>
-               <el-form-item label="rdp端口" prop="rdpPort">
-                 <el-input v-model="formData.rdpPort"></el-input>
-               </el-form-item>
-               <el-form-item label="rdp用户名" prop="rdpUsername">
-                 <el-input v-model="formData.rdpUsername"></el-input>
-               </el-form-item>
-               <el-form-item label="同一服务器" prop="sameServer">
-                 <el-switch v-model="formData.sameServer"></el-switch>
-               </el-form-item>-->
-
-
-        <el-form-item>
-          <el-button @click="formVisible = false">{{ T('Cancel') }}</el-button>
-          <el-button @click="submit" type="primary">{{ T('Submit') }}</el-button>
-        </el-form-item>
-      </el-form>
-    </el-dialog>
-    <el-dialog v-model="shareToWebClientVisible" width="900" :close-on-click-modal="false">
+            >{{ item.name }}</a-select-option>
+          </a-select>
+        </a-form-item>
+      </a-form>
+      <template #footer>
+        <a-button @click="formVisible = false">{{ T('Cancel') }}</a-button>
+        <a-button @click="submit" type="primary">{{ T('Submit') }}</a-button>
+      </template>
+    </a-modal>
+    <a-modal v-model:open="shareToWebClientVisible" width="900" :footer="null">
       <shareByWebClient :id="shareToWebClientForm.id"
                         :hash="shareToWebClientForm.hash"
                         @cancel="shareToWebClientVisible=false"
                         @success=""/>
-    </el-dialog>
-  </el-container>
+    </a-modal>
+  </div>
 </template>
 
 <script setup>
-  import { onActivated, onMounted, reactive, ref, watch } from 'vue'
+  import { onActivated, onMounted, ref, watch } from 'vue'
   import { list as fetchTagList } from '@/api/tag'
   import { useRepositories } from '@/views/address_book'
   import { useRepositories as useCollectionRepositories } from '@/views/address_book/collection'
@@ -176,7 +143,7 @@
   import { useAppStore } from '@/store/app'
   import { connectByClient } from '@/utils/peer'
   import { handleClipboard } from '@/utils/clipboard'
-  import { CopyDocument } from '@element-plus/icons'
+  import { CopyOutlined } from '@ant-design/icons-vue'
 
   const appStore = useAppStore()
   const tagList = ref([])
@@ -211,8 +178,8 @@
   onActivated(getList)
 
   watch(() => listQuery.page, getList)
+  watch(() => listQuery.page_size, getList)
 
-  watch(() => listQuery.page_size, handlerQuery)
   const {
     listRes: collectionListRes,
     listQuery: collectionListQuery,
@@ -222,10 +189,6 @@
   collectionListQuery.page_size = 999
   onMounted(getCollectionList)
 
-  const alert = (msg) => {
-    window.alert(msg)
-  }
-
   const {
     listRes: tagListRes,
     listQuery: tagListQuery,
@@ -234,27 +197,25 @@
   tagListQuery.is_my = 1
   tagListQuery.page_size = 999
   onMounted(getTagList)
-  const checkedTags = ref(['111'])
+  const checkedTags = ref([])
   const toggleTag = async (tag) => {
     if (checkedTags.value.includes(tag.name)) {
       checkedTags.value = checkedTags.value.filter(t => t !== tag.name)
     } else {
       checkedTags.value.push(tag.name)
     }
-    // listQuery.tags = checkedTags.value.join(',')
-    // getList()
   }
 </script>
 
 <style scoped lang="scss">
-.app-main {
-  border-left: 0;
-}
-
 .address-book-con {
+  display: flex;
   height: calc(100vh - 120px);
 
   .aside {
+    width: 200px;
+    padding-right: 16px;
+
     .aside-tags {
       margin-top: 15px;
       border: 1px solid #eee;
@@ -296,18 +257,13 @@
           font-size: 12px;
           margin-right: 6px;
         }
-
       }
     }
   }
 
   .con {
+    flex: 1;
     padding-top: 0;
   }
-
-  .name-menu {
-    height: calc(100vh - 75px);
-  }
-
 }
 </style>

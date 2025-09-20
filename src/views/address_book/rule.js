@@ -2,7 +2,7 @@ import { computed, reactive, ref } from 'vue'
 import { list as admin_list, create as admin_create, update as admin_update, remove as admin_remove } from '@/api/address_book_collection_rule'
 import { list as my_list, create as my_create, update as my_update, remove as my_remove } from '@/api/my/address_book_collection_rule'
 import { groupUsers } from '@/api/user'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { message, Modal } from 'ant-design-vue'
 import { T } from '@/utils/i18n'
 
 const apis = {
@@ -38,18 +38,20 @@ export function useRepositories (api_type = 'my') {
   }
 
   const del = async (row) => {
-    const cf = await ElMessageBox.confirm(T('Confirm?', { param: T('Delete') }), {
-      confirmButtonText: T('Confirm'),
-      cancelButtonText: T('Cancel'),
-      type: 'warning',
-    }).catch(_ => false)
+    const cf = await new Promise(resolve => {
+      Modal.confirm({
+        title: T('Confirm?', { param: T('Delete') }),
+        onOk: () => resolve(true),
+        onCancel: () => resolve(false)
+      })
+    })
     if (!cf) {
       return false
     }
 
     const res = await apis[api_type].remove({ id: row.id }).catch(_ => false)
     if (res) {
-      ElMessage.success(T('OperationSuccess'))
+      message.success(T('OperationSuccess'))
       getList()
     }
   }
@@ -110,7 +112,7 @@ export function useRepositories (api_type = 'my') {
     form.to_id = form.type === TYPE_G ? form.g_id : form.u_id
     const res = await api(form).catch(_ => false)
     if (res) {
-      ElMessage.success(T('OperationSuccess'))
+      message.success(T('OperationSuccess'))
       formVisible.value = false
       getList()
     }

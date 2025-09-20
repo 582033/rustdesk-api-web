@@ -1,187 +1,99 @@
 <template>
   <div>
-    <el-card class="list-query" shadow="hover">
-      <el-form inline label-width="150px">
-        <el-form-item label="ID">
-          <el-input v-model="listQuery.id" clearable/>
-        </el-form-item>
-        <el-form-item :label="T('Hostname')">
-          <el-input v-model="listQuery.hostname" clearable/>
-        </el-form-item>
-        <el-form-item :label="T('LastOnlineTime')">
-          <el-select v-model="listQuery.time_ago" clearable>
-            <el-option
+    <a-card class="list-query" :bordered="false">
+      <a-form layout="inline" :model="listQuery" class="list-query-form">
+        <a-form-item label="ID">
+          <a-input v-model:value="listQuery.id" clearable/>
+        </a-form-item>
+        <a-form-item :label="T('Hostname')">
+          <a-input v-model:value="listQuery.hostname" clearable/>
+        </a-form-item>
+        <a-form-item :label="T('LastOnlineTime')">
+          <a-select v-model:value="listQuery.time_ago" clearable style="width: 180px">
+            <a-select-option
                 v-for="item in timeFilters"
                 :key="item.value"
-                :label="item.text"
                 :value="item.value"
                 :disabled="item.value === 0"
-            ></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handlerQuery">{{ T('Filter') }}</el-button>
-          <el-button type="success" @click="toExport">{{ T('Export') }}</el-button>
-          <!--          <el-button type="danger" @click="toBatchDelete">{{ T('BatchDelete') }}</el-button>-->
-          <el-button type="primary" @click="toBatchAddToAB">{{ T('BatchAddToAB') }}</el-button>
-
-        </el-form-item>
-      </el-form>
-    </el-card>
-    <el-card class="list-body" shadow="hover">
-      <el-table :data="listRes.list" v-loading="listRes.loading" border size="small" @selection-change="handleSelectionChange">
-        <el-table-column type="selection" width="55" align="center"/>
-        <el-table-column prop="id" label="ID" align="center" width="150">
-          <template #default="{row}">
-            <span>{{ row.id }} <el-icon @click="handleClipboard(row.id, $event)"><CopyDocument/></el-icon></span>
+            >{{ item.text }}</a-select-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item>
+          <a-button type="primary" @click="handlerQuery">{{ T('Filter') }}</a-button>
+          <a-button type="primary" @click="toExport" style="margin-left: 8px;">{{ T('Export') }}</a-button>
+          <a-button type="primary" @click="toBatchAddToAB" style="margin-left: 8px;">{{ T('BatchAddToAB') }}</a-button>
+        </a-form-item>
+      </a-form>
+    </a-card>
+    <a-card class="list-body" :bordered="false">
+      <a-table :data-source="listRes.list" :loading="listRes.loading" :columns="columns" bordered size="small" :row-selection="{ selectedRowKeys: selectedRowKeys, onChange: onSelectChange }" rowKey="id">
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'id'">
+            <span>{{ record.id }} <CopyOutlined @click="handleClipboard(record.id, $event)" /></span>
           </template>
-        </el-table-column>
-        <el-table-column prop="cpu" label="CPU" align="center" width="100" show-overflow-tooltip/>
-        <el-table-column prop="hostname" :label="T('Hostname')" align="center" width="120"/>
-        <el-table-column prop="memory" :label="T('Memory')" align="center" width="120"/>
-        <el-table-column prop="os" :label="T('Os')" align="center" width="120" show-overflow-tooltip/>
-        <el-table-column prop="last_online_time" :label="T('LastOnlineTime')" align="center" min-width="120">
-          <template #default="{row}">
+          <template v-if="column.key === 'last_online_time'">
             <div class="last_oline_time">
-              <span> {{ row.last_online_time ? timeAgo(row.last_online_time * 1000) : '-' }}</span> <span class="dot" :class="{red: timeDis(row.last_online_time) >= 60, green: timeDis(row.last_online_time)< 60}"></span>
+              <span> {{ record.last_online_time ? timeAgo(record.last_online_time * 1000) : '-' }}</span>
+              <span class="dot" :class="{red: timeDis(record.last_online_time) >= 60, green: timeDis(record.last_online_time) < 60}"></span>
             </div>
           </template>
-        </el-table-column>
-        <el-table-column prop="last_online_ip" :label="T('LastOnlineIp')" align="center" min-width="120"/>
-        <el-table-column prop="username" :label="T('Username')" align="center" width="120"/>
-        <el-table-column prop="uuid" :label="T('Uuid')" align="center" width="120" show-overflow-tooltip/>
-        <el-table-column prop="version" :label="T('Version')" align="center" width="80"/>
-        <el-table-column prop="alias" :label="T('Alias')" align="center" width="80"/>
-        <el-table-column prop="created_at" :label="T('CreatedAt')" align="center" width="150"/>
-        <el-table-column prop="updated_at" :label="T('UpdatedAt')" align="center" width="150"/>
-        <el-table-column :label="T('Actions')" align="center" width="500" class-name="table-actions" fixed="right">
-          <template #default="{row}">
-            <el-button type="success" @click="connectByClient(row.id)">{{ T('Link') }}</el-button>
-            <el-button v-if="appStore.setting.appConfig.web_client" type="success" @click="toWebClientLink(row)">Web Client</el-button>
-            <el-button type="primary" @click="toAddressBook(row)">{{ T('AddToAddressBook') }}</el-button>
-            <el-button @click="toView(row)">{{ T('View') }}</el-button>
-            <!--            <el-button type="danger" @click="del(row)">{{ T('Delete') }}</el-button>-->
+          <template v-if="column.key === 'actions'">
+            <a-button type="primary" size="small" @click="connectByClient(record.id)">{{ T('Link') }}</a-button>
+            <a-button v-if="appStore.setting.appConfig.web_client" type="primary" size="small" @click="toWebClientLink(record)" style="margin-left: 8px;">Web Client</a-button>
+            <a-button type="primary" size="small" @click="toAddressBook(record)" style="margin-left: 8px;">{{ T('AddToAddressBook') }}</a-button>
+            <a-button size="small" @click="toView(record)" style="margin-left: 8px;">{{ T('View') }}</a-button>
           </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
-    <el-card class="list-page" shadow="hover">
-      <el-pagination background
-                     layout="prev, pager, next, sizes, jumper"
-                     :page-sizes="[10,20,50,100]"
-                     v-model:page-size="listQuery.page_size"
-                     v-model:current-page="listQuery.page"
-                     :total="listRes.total">
-      </el-pagination>
-    </el-card>
-    <el-dialog v-model="formVisible" :title="T('Information')" width="800" :style="{ textAlign: 'center' }">
-      <el-form class="dialog-form" ref="form" :model="formData" label-width="120px">
-        <el-form-item label="ID" prop="id">
-          <el-input v-model="formData.id" disabled></el-input>
-        </el-form-item>
-        <el-form-item :label="T('Username')" prop="username">
-          <el-input v-model="formData.username" disabled></el-input>
-        </el-form-item>
-        <el-form-item :label="T('Hostname')" prop="hostname">
-          <el-input v-model="formData.hostname" disabled></el-input>
-        </el-form-item>
-        <el-form-item label="CPU" prop="cpu">
-          <el-input v-model="formData.cpu" disabled></el-input>
-        </el-form-item>
-        <el-form-item :label="T('Memory')" prop="memory">
-          <el-input v-model="formData.memory" disabled></el-input>
-        </el-form-item>
-        <el-form-item :label="T('Os')" prop="os">
-          <el-input v-model="formData.os" disabled></el-input>
-        </el-form-item>
-        <el-form-item :label="T('Uuid')" prop="uuid">
-          <el-input v-model="formData.uuid" disabled></el-input>
-        </el-form-item>
-        <el-form-item :label="T('Version')" prop="version">
-          <el-input v-model="formData.version" disabled></el-input>
-        </el-form-item>
-      </el-form>
-    </el-dialog>
+        </template>
+      </a-table>
+      <a-pagination
+          style="margin-top: 12px; text-align: right;"
+          v-model:current="listQuery.page"
+          v-model:pageSize="listQuery.page_size"
+          :total="listRes.total"
+          show-size-changer
+          show-quick-jumper
+          :show-total="total => `${T('Total')} ${total} ${T('Items')}`"
+      />
+    </a-card>
 
-    <el-dialog v-model="ABFormVisible" width="800" :title="T('Create')">
-      <el-form class="dialog-form" ref="form" :model="ABFormData" label-width="120px">
-        <el-form-item :label="T('AddressBookName')" required prop="collection_id">
-          <el-select v-model="ABFormData.collection_id" clearable @change="changeCollectionForUpdate">
-            <el-option :value="0" :label="T('MyAddressBook')"></el-option>
-            <el-option v-for="c in collectionListResForUpdate.list" :key="c.id" :label="c.name" :value="c.id"></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item label="ID" prop="id" required>
-          <el-input v-model="ABFormData.id"></el-input>
-        </el-form-item>
-        <el-form-item :label="T('Username')" prop="username">
-          <el-input v-model="ABFormData.username"></el-input>
-        </el-form-item>
-        <el-form-item :label="T('Alias')" prop="alias">
-          <el-input v-model="ABFormData.alias"></el-input>
-        </el-form-item>
-        <el-form-item :label="T('Hostname')" prop="hostname">
-          <el-input v-model="ABFormData.hostname"></el-input>
-        </el-form-item>
-        <el-form-item :label="T('Platform')" prop="platform">
-          <el-select v-model="ABFormData.platform">
-            <el-option
-                v-for="item in ABPlatformList"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
-            ></el-option>
-          </el-select>
-        </el-form-item>
+    <a-modal v-model:open="formVisible" :title="T('Information')" :footer="null">
+      <a-form class="dialog-form" :model="formData" layout="vertical">
+        <a-form-item label="ID"><a-input v-model:value="formData.id" disabled /></a-form-item>
+        <a-form-item :label="T('Username')"><a-input v-model:value="formData.username" disabled /></a-form-item>
+        <a-form-item :label="T('Hostname')"><a-input v-model:value="formData.hostname" disabled /></a-form-item>
+        <a-form-item label="CPU"><a-input v-model:value="formData.cpu" disabled /></a-form-item>
+        <a-form-item :label="T('Memory')"><a-input v-model:value="formData.memory" disabled /></a-form-item>
+        <a-form-item :label="T('Os')"><a-input v-model:value="formData.os" disabled /></a-form-item>
+        <a-form-item :label="T('Uuid')"><a-input v-model:value="formData.uuid" disabled /></a-form-item>
+        <a-form-item :label="T('Version')"><a-input v-model:value="formData.version" disabled /></a-form-item>
+      </a-form>
+    </a-modal>
 
-        <el-form-item :label="T('Tags')" prop="tags">
-          <el-select v-model="ABFormData.tags" multiple>
-            <el-option
-                v-for="item in tagListRes.list"
-                :key="item.name"
-                :label="item.name"
-                :value="item.name"
-            ></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button @click="ABFormVisible = false">{{ T('Cancel') }}</el-button>
-          <el-button @click="ABSubmit" type="primary">{{ T('Submit') }}</el-button>
-        </el-form-item>
-      </el-form>
-    </el-dialog>
+    <a-modal v-model:open="ABFormVisible" :title="T('Create')" @ok="ABSubmit" @cancel="ABFormVisible = false">
+      <a-form class="dialog-form" :model="ABFormData" layout="vertical">
+        <a-form-item :label="T('AddressBookName')" required><a-select v-model:value="ABFormData.collection_id" @change="changeCollectionForUpdate"><a-select-option :value="0">{{ T('MyAddressBook') }}</a-select-option><a-select-option v-for="c in collectionListResForUpdate.list" :key="c.id" :value="c.id">{{ c.name }}</a-select-option></a-select></a-form-item>
+        <a-form-item label="ID" required><a-input v-model:value="ABFormData.id" /></a-form-item>
+        <a-form-item :label="T('Username')"><a-input v-model:value="ABFormData.username" /></a-form-item>
+        <a-form-item :label="T('Alias')"><a-input v-model:value="ABFormData.alias" /></a-form-item>
+        <a-form-item :label="T('Hostname')"><a-input v-model:value="ABFormData.hostname" /></a-form-item>
+        <a-form-item :label="T('Platform')"><a-select v-model:value="ABFormData.platform"><a-select-option v-for="item in ABPlatformList" :key="item.value" :value="item.value">{{ item.label }}</a-select-option></a-select></a-form-item>
+        <a-form-item :label="T('Tags')"><a-select v-model:value="ABFormData.tags" mode="multiple"><a-select-option v-for="item in tagListRes.list" :key="item.name" :value="item.name">{{ item.name }}</a-select-option></a-select></a-form-item>
+      </a-form>
+    </a-modal>
 
-    <el-dialog v-model="batchABFormVisible" width="800" :title="T('Create')">
-      <el-form class="dialog-form" ref="form" :model="batchABFormData" label-width="120px">
-        <el-form-item :label="T('AddressBookName')" required prop="collection_id">
-          <el-select v-model="batchABFormData.collection_id" clearable @change="changeCollectionForBatchCreateAB">
-            <el-option :value="0" :label="T('MyAddressBook')"></el-option>
-            <el-option v-for="c in collectionListResForUpdate.list" :key="c.id" :label="c.name" :value="c.id"></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item :label="T('Tags')" prop="tags">
-          <el-select v-model="batchABFormData.tags" multiple>
-            <el-option
-                v-for="item in tagListRes.list"
-                :key="item.name"
-                :label="item.name"
-                :value="item.name"
-            ></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button @click="batchABFormVisible = false">{{ T('Cancel') }}</el-button>
-          <el-button @click="submitBatchAddToAB" type="primary">{{ T('Submit') }}</el-button>
-        </el-form-item>
-      </el-form>
-    </el-dialog>
+    <a-modal v-model:open="batchABFormVisible" :title="T('Create')" @ok="submitBatchAddToAB" @cancel="batchABFormVisible = false">
+      <a-form class="dialog-form" :model="batchABFormData" layout="vertical">
+        <a-form-item :label="T('AddressBookName')" required><a-select v-model:value="batchABFormData.collection_id" @change="changeCollectionForBatchCreateAB"><a-select-option :value="0">{{ T('MyAddressBook') }}</a-select-option><a-select-option v-for="c in collectionListResForUpdate.list" :key="c.id" :value="c.id">{{ c.name }}</a-select-option></a-select></a-form-item>
+        <a-form-item :label="T('Tags')"><a-select v-model:value="batchABFormData.tags" mode="multiple"><a-select-option v-for="item in tagListRes.list" :key="item.name" :value="item.name">{{ item.name }}</a-select-option></a-select></a-form-item>
+      </a-form>
+    </a-modal>
   </div>
 </template>
 
 <script setup>
   import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
   import { list } from '@/api/my/peer'
-  import { ElMessage, ElMessageBox } from 'element-plus'
+  import { message } from 'ant-design-vue'
   import { toWebClientLink } from '@/utils/webclient'
   import { T } from '@/utils/i18n'
   import { timeAgo } from '@/utils/time'
@@ -189,7 +101,6 @@
   import { useRepositories as useABRepositories } from '@/views/address_book/index'
   import { useAppStore } from '@/store/app'
   import { connectByClient } from '@/utils/peer'
-  import { CopyDocument } from '@element-plus/icons'
   import { handleClipboard } from '@/utils/clipboard'
   import { batchCreateFromPeers } from '@/api/my/address_book'
 
@@ -204,6 +115,23 @@
     id: '',
     hostname: '',
   })
+
+  const columns = computed(() => [
+    { title: 'ID', dataIndex: 'id', key: 'id', align: 'center', width: 150 },
+    { title: 'CPU', dataIndex: 'cpu', key: 'cpu', align: 'center', width: 100, ellipsis: true },
+    { title: T('Hostname'), dataIndex: 'hostname', key: 'hostname', align: 'center', width: 120 },
+    { title: T('Memory'), dataIndex: 'memory', key: 'memory', align: 'center', width: 120 },
+    { title: T('Os'), dataIndex: 'os', key: 'os', align: 'center', width: 120, ellipsis: true },
+    { title: T('LastOnlineTime'), dataIndex: 'last_online_time', key: 'last_online_time', align: 'center', minWidth: 120 },
+    { title: T('LastOnlineIp'), dataIndex: 'last_online_ip', key: 'last_online_ip', align: 'center', minWidth: 120 },
+    { title: T('Username'), dataIndex: 'username', key: 'username', align: 'center', width: 120 },
+    { title: T('Uuid'), dataIndex: 'uuid', key: 'uuid', align: 'center', width: 120, ellipsis: true },
+    { title: T('Version'), dataIndex: 'version', key: 'version', align: 'center', width: 80 },
+    { title: T('Alias'), dataIndex: 'alias', key: 'alias', align: 'center', width: 80 },
+    { title: T('CreatedAt'), dataIndex: 'created_at', key: 'created_at', align: 'center', width: 150 },
+    { title: T('UpdatedAt'), dataIndex: 'updated_at', key: 'updated_at', align: 'center', width: 150 },
+    { title: T('Actions'), key: 'actions', align: 'center', width: 500, fixed: 'right' },
+  ]);
 
   const getList = async () => {
     listRes.loading = true
@@ -222,45 +150,19 @@
     }
   }
 
-  /*const del = async (row) => {
-    const cf = await ElMessageBox.confirm(T('Confirm?', { param: T('Delete') }), {
-      confirmButtonText: T('Confirm'),
-      cancelButtonText: T('Cancel'),
-      type: 'warning',
-    }).catch(_ => false)
-    if (!cf) {
-      return false
-    }
-
-    const res = await remove({ row_id: row.row_id }).catch(_ => false)
-    if (res) {
-      ElMessage.success(T('OperationSuccess'))
-      getList()
-    }
-  }*/
   onMounted(getList)
   onActivated(getList)
 
   watch(() => listQuery.page, getList)
-
-  watch(() => listQuery.page_size, handlerQuery)
+  watch(() => listQuery.page_size, getList)
 
   const formVisible = ref(false)
   const formData = reactive({
-    row_id: 0,
-    cpu: '',
-    hostname: '',
-    id: '',
-    memory: '',
-    os: '',
-    username: '',
-    uuid: '',
-    version: '',
+    row_id: 0, cpu: '', hostname: '', id: '', memory: '', os: '', username: '', uuid: '', version: '',
   })
 
   const toView = (row) => {
     formVisible.value = true
-    //将row中的数据赋值给formData
     Object.keys(formData).forEach(key => {
       formData[key] = row[key]
     })
@@ -281,7 +183,6 @@
     { text: T('HoursAgo', { param: 1 }, 1), value: 3600 },
     { text: T('DaysAgo', { param: 1 }, 1), value: 86400 },
     { text: T('MonthsAgo', { param: 1 }, 1), value: 2592000 },
-    // { text: T('YearsAgo', { param: 1 }, 1), value: 31536000 },
   ])
 
   const toExport = async () => {
@@ -318,33 +219,17 @@
     ABFormVisible.value = true
   }
 
-  const multipleSelection = ref([])
-  const handleSelectionChange = (val) => {
-    multipleSelection.value = val
-  }
-  /*const toBatchDelete = async () => {
-    if (!multipleSelection.value.length) {
-      ElMessage.warning(T('PleaseSelectData'))
-      return false
-    }
-    const cf = await ElMessageBox.confirm(T('Confirm?', { param: T('BatchDelete') }), {
-      confirmButtonText: T('Confirm'),
-      cancelButtonText: T('Cancel'),
-      type: 'warning',
-    }).catch(_ => false)
-    if (!cf) {
-      return false
-    }
-
-    const res = await batchRemove({ row_ids: multipleSelection.value.map(i => i.row_id) }).catch(_ => false)
-    if (res) {
-      ElMessage.success(T('OperationSuccess'))
-      getList()
-    }
-  }*/
-
+  const selectedRowKeys = ref([]);
+  const onSelectChange = (keys) => {
+    selectedRowKeys.value = keys;
+  };
+  
   const batchABFormVisible = ref(false)
   const toBatchAddToAB = () => {
+    if (selectedRowKeys.value.length === 0) {
+      message.warning(T('PleaseSelectData'))
+      return false
+    }
     batchABFormVisible.value = true
   }
   const batchABFormData = ref({
@@ -357,31 +242,29 @@
     changeCollectionForUpdate(val)
   }
   const submitBatchAddToAB = async () => {
-    if (multipleSelection.value.length === 0) {
-      ElMessage.warning(T('PleaseSelectData'))
-      return false
-    }
-    batchABFormData.value.peer_ids = multipleSelection.value.map(i => i.row_id)
+    batchABFormData.value.peer_ids = selectedRowKeys.value
     if (!batchABFormData.value.peer_ids.length) {
-      ElMessage.warning(T('PleaseSelectData'))
+      message.warning(T('PleaseSelectData'))
       return false
     }
 
     const res = await batchCreateFromPeers(batchABFormData.value).catch(_ => false)
     if (res) {
-      ElMessage.success(T('OperationSuccess'))
+      message.success(T('OperationSuccess'))
       batchABFormVisible.value = false
+      selectedRowKeys.value = []
     }
   }
-
-
 </script>
 
 <style scoped lang="scss">
-.list-query .el-select {
-  --el-select-width: 180px;
+.list-query-form {
+  display: flex;
+  flex-wrap: wrap;
+  .ant-form-item {
+    margin-bottom: 12px;
+  }
 }
-
 .last_oline_time {
   display: flex;
   justify-content: center;

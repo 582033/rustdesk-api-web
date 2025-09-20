@@ -1,64 +1,62 @@
 <template>
   <div>
-    <el-card class="list-query" shadow="hover">
-      <el-form inline label-width="80px">
-        <el-form-item :label="T('User')">
-          <el-select v-model="listQuery.user_id" clearable>
-            <el-option
+    <a-card class="list-query">
+      <a-form layout="inline">
+        <a-form-item :label="T('User')">
+          <a-select v-model:value="listQuery.user_id" clearable style="width: 160px">
+            <a-select-option
                 v-for="item in allUsers"
                 :key="item.id"
-                :label="item.username"
                 :value="item.id"
-            ></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handlerQuery">{{ T('Filter') }}</el-button>
-          <el-button type="danger" @click="toBatchDelete">{{ T('BatchDelete') }}</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
-    <el-card class="list-body" shadow="hover">
-      <el-table :data="listRes.list" v-loading="listRes.loading" border @selection-change="handleSelectionChange">
-        <el-table-column type="selection" align="center" width="50"/>
-        <el-table-column prop="id" label="ID" align="center" width="100"/>
-        <el-table-column :label="T('User')" align="center" width="120">
-          <template #default="{row}">
-            <span v-if="row.user_id"> <el-tag>{{ allUsers?.find(u => u.id === row.user_id)?.username }}</el-tag> </span>
+            >{{ item.username }}</a-select-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item>
+          <a-button type="primary" @click="handlerQuery">{{ T('Filter') }}</a-button>
+          <a-button danger @click="toBatchDelete" style="margin-left: 8px;">{{ T('BatchDelete') }}</a-button>
+        </a-form-item>
+      </a-form>
+    </a-card>
+    <a-card class="list-body" style="margin-top: 16px;">
+      <a-table
+        :data-source="listRes.list"
+        :loading="listRes.loading"
+        bordered
+        :row-key="record => record.id"
+        :columns="columns"
+        :row-selection="{ selectedRowKeys: selectedRowKeys, onChange: onSelectChange }"
+        :pagination="false"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.dataIndex === 'user_id'">
+            <span v-if="record.user_id"> <a-tag>{{ allUsers?.find(u => u.id === record.user_id)?.username }}</a-tag> </span>
           </template>
-        </el-table-column>
-        <el-table-column prop="peer_id" :label="T('Peer')" align="center"/>
-        <el-table-column prop="created_at" :label="T('CreatedAt')" align="center"/>
-        <el-table-column :label="`${T('ExpireTime')} (${T('Second')})`" prop="expire" align="center">
-          <template #default="{row}">
-            <el-tag :type="expired(row)?'info':'success'">{{ row.expire ? row.expire : T('Forever') }}</el-tag>
+          <template v-if="column.dataIndex === 'expire'">
+             <a-tag :color="expired(record)?'#808080':'#87d068'">{{ record.expire ? record.expire : T('Forever') }}</a-tag>
           </template>
-        </el-table-column>
-        <el-table-column :label="T('Actions')" align="center" width="400">
-          <template #default="{row}">
-            <el-button type="danger" @click="del(row)">{{ T('Delete') }}</el-button>
+          <template v-if="column.dataIndex === 'actions'">
+            <a-button danger @click="del(record)">{{ T('Delete') }}</a-button>
           </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
-    <el-card class="list-page" shadow="hover">
-      <el-pagination background
-                     layout="prev, pager, next, sizes, jumper"
-                     :page-sizes="[10,20,50,100]"
-                     v-model:page-size="listQuery.page_size"
-                     v-model:current-page="listQuery.page"
-                     :total="listRes.total">
-      </el-pagination>
-    </el-card>
+        </template>
+      </a-table>
+    </a-card>
+    <a-card class="list-page" style="margin-top: 16px;">
+      <a-pagination
+        v-model:current="listQuery.page"
+        v-model:pageSize="listQuery.page_size"
+        :total="listRes.total"
+        show-size-changer
+        show-quick-jumper
+        :show-total="total => `${T('Total')} ${total} ${T('Items')}`"
+      />
+    </a-card>
   </div>
 </template>
 
 <script setup>
-  import { onActivated, onMounted, ref, watch, reactive } from 'vue'
+  import { onActivated, onMounted, ref, watch, computed } from 'vue'
   import { loadAllUsers } from '@/global'
   import { T } from '@/utils/i18n'
-  import { remove, list, batchDelete } from '@/api/share_record'
-  import { ElMessage, ElMessageBox } from 'element-plus'
   import { useRepositories } from '@/views/share_record/index'
 
   const { allUsers, getAllUsers } = loadAllUsers()
@@ -75,23 +73,37 @@
     expired,
   } = useRepositories('admin')
 
+  const columns = computed(() => [
+    { title: 'ID', dataIndex: 'id', align: 'center', width: 100 },
+    { title: T('User'), dataIndex: 'user_id', align: 'center', width: 120 },
+    { title: T('Peer'), dataIndex: 'peer_id', align: 'center' },
+    { title: T('CreatedAt'), dataIndex: 'created_at', align: 'center' },
+    { title: `${T('ExpireTime')} (${T('Second')})`, dataIndex: 'expire', align: 'center' },
+    { title: T('Actions'), dataIndex: 'actions', align: 'center', width: 400 },
+  ])
+
+  const selectedRowKeys = ref([]);
+
+  const onSelectChange = (keys, selectedRows) => {
+    selectedRowKeys.value = keys;
+    multipleSelection.value = selectedRows;
+  };
+
+  watch(multipleSelection, () => {
+    selectedRowKeys.value = multipleSelection.value.map(item => item.id);
+  });
+
+
   onMounted(getList)
   onActivated(getList)
 
   watch(() => listQuery.page, getList)
-
-  watch(() => listQuery.page_size, handlerQuery)
-  const handleSelectionChange = (val) => {
-    multipleSelection.value = val
-  }
-
+  watch(() => listQuery.page_size, getList)
 
 </script>
 
 <style scoped lang="scss">
-.list-query .el-select {
-  --el-select-width: 160px;
+.list-query .ant-select {
+  width: 160px;
 }
-
-
 </style>

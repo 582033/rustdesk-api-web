@@ -1,55 +1,48 @@
 <template>
   <div>
-    <el-card class="list-query" shadow="hover">
-      <el-form inline label-width="80px">
-        <el-form-item>
-          <el-button type="primary" @click="handlerQuery">{{ T('Filter') }}</el-button>
-          <el-button type="danger" @click="toAdd">{{ T('Add') }}</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
-    <el-card class="list-body" shadow="hover">
-      <el-tag type="danger" effect="light" style="margin-bottom: 10px">{{ T('MyAddressBookTips') }}</el-tag>
-      <el-table :data="list" v-loading="listRes.loading" border>
-        <!--        <el-table-column prop="id" label="ID" align="center"/>-->
-        <el-table-column prop="name" :label="T('Name')" align="center"/>
-        <el-table-column prop="created_at" :label="T('CreatedAt')" align="center"/>
-        <!--        <el-table-column prop="updated_at" label="更新时间" align="center"/>-->
-        <el-table-column :label="T('Actions')" align="center" class-name="table-actions" width="600" fixed="right">
-          <template #default="{row}">
-            <template v-if="row.id>0">
-              <el-button type="primary" @click="showRules(row)">{{ T('ShareRules') }}</el-button>
-              <el-button @click="toEdit(row)">{{ T('Edit') }}</el-button>
-              <el-button type="danger" @click="del(row)">{{ T('Delete') }}</el-button>
+    <a-card class="list-query" :bordered="false">
+      <a-form layout="inline">
+        <a-form-item>
+          <a-button type="primary" @click="handlerQuery">{{ T('Filter') }}</a-button>
+          <a-button type="primary" @click="toAdd" style="margin-left: 8px;">{{ T('Add') }}</a-button>
+        </a-form-item>
+      </a-form>
+    </a-card>
+    <a-card class="list-body" :bordered="false">
+      <a-alert :message="T('MyAddressBookTips')" type="error" banner style="margin-bottom: 10px" />
+      <a-table :data-source="list" :loading="listRes.loading" :columns="columns" bordered :pagination="false" rowKey="id">
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'actions'">
+            <template v-if="record.id > 0">
+              <a-button type="primary" size="small" @click="showRules(record)">{{ T('ShareRules') }}</a-button>
+              <a-button size="small" @click="toEdit(record)" style="margin-left: 8px;">{{ T('Edit') }}</a-button>
+              <a-button type="primary" danger size="small" @click="del(record)" style="margin-left: 8px;">{{ T('Delete') }}</a-button>
             </template>
           </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
-    <el-card class="list-page" shadow="hover">
-      <el-pagination background
-                     layout="prev, pager, next, sizes, jumper"
-                     :page-sizes="[10,20,50,100]"
-                     v-model:page-size="listQuery.page_size"
-                     v-model:current-page="listQuery.page"
-                     :total="listRes.total">
-      </el-pagination>
-    </el-card>
-    <el-dialog v-model="formVisible" width="800" :title="!formData.id?T('Create') :T('Update') ">
-      <el-form class="dialog-form" ref="form" :model="formData" label-width="120px">
-        <el-form-item :label="T('Name')" prop="name" required>
-          <el-input v-model="formData.name"></el-input>
-        </el-form-item>
-        <el-form-item>
-          <el-button @click="formVisible = false">{{ T('Cancel') }}</el-button>
-          <el-button @click="submit" type="primary">{{ T('Submit') }}</el-button>
-        </el-form-item>
-      </el-form>
-    </el-dialog>
-    <el-dialog v-model="rulesVisible" :title="T('ShareRules')" destroy-on-close top="5vh" width="80%">
-      <Rule :collection="clickRow" :is_my="1"></Rule>
-    </el-dialog>
+        </template>
+      </a-table>
+      <a-pagination
+          style="margin-top: 12px; text-align: right;"
+          v-model:current="listQuery.page"
+          v-model:pageSize="listQuery.page_size"
+          :total="listRes.total"
+          show-size-changer
+          show-quick-jumper
+          :show-total="total => `${T('Total')} ${total} ${T('Items')}`"
+      />
+    </a-card>
 
+    <a-modal v-model:open="formVisible" :title="!formData.id ? T('Create') : T('Update')" @ok="submit" @cancel="formVisible = false">
+      <a-form class="dialog-form" :model="formData" layout="vertical" style="margin-top: 20px;">
+        <a-form-item :label="T('Name')" name="name" :rules="[{ required: true }]">
+          <a-input v-model:value="formData.name" />
+        </a-form-item>
+      </a-form>
+    </a-modal>
+
+    <a-modal v-model:open="rulesVisible" :title="T('ShareRules')" :footer="null" :destroy-on-close="true" width="80%">
+      <Rule :collection="clickRow" :is_my="1"></Rule>
+    </a-modal>
   </div>
 </template>
 
@@ -57,7 +50,7 @@
   import { T } from '@/utils/i18n'
   import { computed, ref } from 'vue'
   import { useRepositories } from '@/views/address_book/collection'
-  import { onActivated, onMounted, watch } from 'vue'
+  import { onMounted, watch } from 'vue'
   import Rule from '@/views/address_book/rule.vue'
 
   const {
@@ -73,30 +66,35 @@
     submit,
   } = useRepositories('my')
 
+  const columns = [
+    { title: T('Name'), dataIndex: 'name', key: 'name', align: 'center' },
+    { title: T('CreatedAt'), dataIndex: 'created_at', key: 'created_at', align: 'center' },
+    { title: T('Actions'), key: 'actions', align: 'center', width: 600 },
+  ];
+
   onMounted(getList)
 
   watch(() => listQuery.page, getList)
-
   watch(() => listQuery.page_size, handlerQuery)
-  const list = computed(_ => {
-    if (listQuery.page > 1) {
+
+  const list = computed(() => {
+    if (listQuery.page > 1 || listRes.list.some(item => item.id === 0)) {
       return listRes.list
     } else {
       return [
-        { id: 0, name: T('MyAddressBook') },
+        { id: 0, name: T('MyAddressBook'), created_at: '-' },
         ...listRes.list,
       ]
     }
   })
+
   const clickRow = ref({})
   const rulesVisible = ref(false)
   const showRules = (row) => {
     clickRow.value = row
     rulesVisible.value = true
   }
-
 </script>
 
 <style scoped lang="scss">
-
 </style>

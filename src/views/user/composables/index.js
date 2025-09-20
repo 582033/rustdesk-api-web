@@ -1,8 +1,8 @@
-import { reactive } from 'vue'
+import { reactive, h, ref } from 'vue'
 import { list, remove, changePwd } from '@/api/user'
 import { list as groups } from '@/api/group'
 import { useRouter } from 'vue-router'
-import { ElMessageBox, ElMessage } from 'element-plus'
+import { message, Modal, Input as AInput } from 'ant-design-vue'
 import { T } from '@/utils/i18n'
 import { downBlob, jsonToCsv } from '@/utils/file'
 
@@ -88,18 +88,20 @@ export function useToEditOrAdd () {
 
 export function useDel () {
   const del = async (id) => {
-    const cf = await ElMessageBox.confirm(T('Confirm?', { param: T('Delete') }), {
-      confirmButtonText: T('Confirm'),
-      cancelButtonText: T('Cancel'),
-      type: 'warning',
-    }).catch(_ => false)
+    const cf = await new Promise(resolve => {
+      Modal.confirm({
+        title: T('Confirm?', { param: T('Delete') }),
+        onOk: () => resolve(true),
+        onCancel: () => resolve(false)
+      })
+    })
     if (!cf) {
       return false
     }
 
     const res = remove({ id }).catch(_ => false)
     if (res) {
-      ElMessage.success(T('OperationSuccess'))
+      message.success(T('OperationSuccess'))
     }
     return res
   }
@@ -110,17 +112,33 @@ export function useDel () {
 
 export function useChangePwd () {
   const changePass = async (admin) => {
-    const input = await ElMessageBox.prompt(T('PleaseInputNewPassword'), T('ResetPassword'), {
-      confirmButtonText: T('Confirm'),
-      cancelButtonText: T('Cancel'),
-    }).catch(_ => false)
+    const newPassword = ref('')
+    const input = await new Promise(resolve => {
+      Modal.confirm({
+        title: T('PleaseInputNewPassword'),
+        content: () => h(AInput, {
+          value: newPassword.value,
+          'onUpdate:value': (val) => {
+            newPassword.value = val
+          },
+          placeholder: T('PleaseInputNewPassword')
+        }),
+        onOk: () => {
+          resolve({ value: newPassword.value })
+        },
+        onCancel: () => resolve(false)
+      })
+    })
     if (!input) {
       return
     }
-    const confirm = await ElMessageBox.confirm(T('Confirm?', { param: T('ResetPassword') }), {
-      confirmButtonText: T('Confirm'),
-      cancelButtonText: T('Cancel'),
-    }).catch(_ => false)
+    const confirm = await new Promise(resolve => {
+      Modal.confirm({
+        title: T('Confirm?', { param: T('ResetPassword') }),
+        onOk: () => resolve(true),
+        onCancel: () => resolve(false)
+      })
+    })
     if (!confirm) {
       return
     }
@@ -128,7 +146,7 @@ export function useChangePwd () {
     if (!res) {
       return
     }
-    ElMessage.success(T('OperationSuccess'))
+    message.success(T('OperationSuccess'))
   }
 
   return { changePass }

@@ -1,11 +1,13 @@
 <template>
-  <el-icon class="ex-icon" @click="expandOrFoldSlider">
-    <el-icon-expand v-if="setting.sideIsCollapse"></el-icon-expand>
-    <el-icon-fold v-else></el-icon-fold>
-  </el-icon>
-  <div class="header-logo">
-    <img :src="setting.logo" alt="" class="logo">
-    <div class="title">{{setting.title}}</div>
+  <div class="header-left">
+    <!-- Mobile Hamburger -->
+    <div class="ex-icon" v-if="appStore.setting.isMobile" @click="appStore.toggleDrawer">
+      <MenuUnfoldOutlined />
+    </div>
+    <div class="header-logo">
+      <img :src="setting.logo" alt="" class="logo">
+      <div class="title">{{setting.title}}</div>
+    </div>
   </div>
   <Setting></Setting>
 </template>
@@ -26,12 +28,9 @@
     setup (props) {
       const appStore = useAppStore()
       const setting = computed(() => appStore.setting)
-      const expandOrFoldSlider = () => {
-        appStore.sideCollapse()
-      }
       return {
         setting,
-        expandOrFoldSlider,
+        appStore,
       }
     },
 
@@ -39,6 +38,10 @@
 </script>
 
 <style scoped lang="scss">
+  .header-left {
+    display: flex;
+    align-items: center;
+  }
   .ex-icon {
     height: 100%;
     display: flex;

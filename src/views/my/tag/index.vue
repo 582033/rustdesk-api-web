@@ -1,150 +1,125 @@
 <template>
   <div>
-    <el-card class="list-query" shadow="hover">
-      <el-form inline label-width="120px">
-        <el-form-item :label="T('AddressBookName')">
-          <el-select v-model="listQuery.collection_id" clearable>
-            <el-option :value="0" :label="T('MyAddressBook')"></el-option>
-            <el-option v-for="c in collectionListRes.list" :key="c.id" :label="c.name" :value="c.id"></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handlerQuery">{{ T('Filter') }}</el-button>
-          <el-button type="danger" @click="toAdd">{{ T('Add') }}</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
-    <el-card class="list-body" shadow="hover">
-      <el-table :data="listRes.list" v-loading="listRes.loading" border>
-        <el-table-column prop="id" label="ID" align="center"/>
-        <el-table-column prop="collection_id" :label="T('AddressBook')" align="center" width="150">
-          <template #default="{row}">
-            <span v-if="row.collection_id === 0">{{ T('MyAddressBook') }}</span>
-            <span v-else>{{ collectionListRes.list.find(c => c.id === row.collection_id)?.name }}</span>
+    <a-card class="list-query" :bordered="false">
+      <a-form layout="inline" :model="listQuery">
+        <a-form-item :label="T('AddressBookName')">
+          <a-select v-model:value="listQuery.collection_id" clearable style="width: 180px;">
+            <a-select-option :value="0">{{ T('MyAddressBook') }}</a-select-option>
+            <a-select-option v-for="c in collectionListRes.list" :key="c.id" :value="c.id">{{ c.name }}</a-select-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item>
+          <a-button type="primary" @click="handlerQuery">{{ T('Filter') }}</a-button>
+          <a-button type="primary" @click="toAdd" style="margin-left: 8px;">{{ T('Add') }}</a-button>
+        </a-form-item>
+      </a-form>
+    </a-card>
+    <a-card class="list-body" :bordered="false">
+      <a-table :data-source="listRes.list" :loading="listRes.loading" :columns="columns" bordered :pagination="false" rowKey="id">
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'collection_id'">
+            <span v-if="record.collection_id === 0">{{ T('MyAddressBook') }}</span>
+            <span v-else>{{ collectionListRes.list.find(c => c.id === record.collection_id)?.name }}</span>
           </template>
-        </el-table-column>
-        <el-table-column prop="name" :label="T('Name')" align="center"/>
-        <el-table-column prop="color" :label="T('Color')" align="center">
-          <template #default="{row}">
+          <template v-if="column.key === 'color'">
             <div class="colors">
-              <div style="background-color: var(--tag-bg-color)" class="colorbox">
-                <div :style="{backgroundColor: row.color}" class="dot">
-                </div>
+              <div class="colorbox">
+                <div :style="{ backgroundColor: record.color }" class="dot"></div>
               </div>
             </div>
           </template>
-        </el-table-column>
-        <el-table-column prop="created_at" :label="T('CreatedAt')" align="center"/>
-        <el-table-column prop="updated_at" :label="T('UpdatedAt')" align="center"/>
-        <el-table-column :label="T('Actions')" align="center">
-          <template #default="{row}">
-            <el-button @click="toEdit(row)">{{ T('Edit') }}</el-button>
-            <el-button type="danger" @click="del(row)">{{ T('Delete') }}</el-button>
+          <template v-if="column.key === 'actions'">
+            <a-button size="small" @click="toEdit(record)">{{ T('Edit') }}</a-button>
+            <a-button type="primary" danger size="small" @click="del(record)" style="margin-left: 8px;">{{ T('Delete') }}</a-button>
           </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
-    <el-card class="list-page" shadow="hover">
-      <el-pagination background
-                     layout="prev, pager, next, sizes, jumper"
-                     :page-sizes="[10,20,50,100]"
-                     v-model:page-size="listQuery.page_size"
-                     v-model:current-page="listQuery.page"
-                     :total="listRes.total">
-      </el-pagination>
-    </el-card>
-    <el-dialog v-model="formVisible" :title="!formData.id?T('Create'):T('Update')" width="800">
-      <el-form class="dialog-form" ref="form" :model="formData" label-width="120px">
-        <el-form-item :label="T('AddressBookName')">
-          <el-select v-model="formData.collection_id" clearable>
-            <el-option :value="0" :label="T('MyAddressBook')"></el-option>
-            <el-option v-for="c in collectionListResForUpdate.list" :key="c.id" :label="c.name" :value="c.id"></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item :label="T('Name')" prop="name" required>
-          <el-input v-model="formData.name"></el-input>
-        </el-form-item>
-        <el-form-item :label="T('Color')" prop="color" required>
-          <el-color-picker v-model="formData.color" show-alpha @active-change="activeChange"></el-color-picker>
+        </template>
+      </a-table>
+      <a-pagination
+          style="margin-top: 12px; text-align: right;"
+          v-model:current="listQuery.page"
+          v-model:pageSize="listQuery.page_size"
+          :total="listRes.total"
+          show-size-changer
+          show-quick-jumper
+          :show-total="total => `${T('Total')} ${total} ${T('Items')}`"
+      />
+    </a-card>
+    <a-modal v-model:open="formVisible" :title="!formData.id ? T('Create') : T('Update')" @ok="submit" @cancel="formVisible = false">
+      <a-form class="dialog-form" :model="formData" layout="vertical" style="margin-top: 20px;">
+        <a-form-item :label="T('AddressBookName')">
+          <a-select v-model:value="formData.collection_id" clearable>
+            <a-select-option :value="0">{{ T('MyAddressBook') }}</a-select-option>
+            <a-select-option v-for="c in collectionListResForUpdate.list" :key="c.id" :value="c.id">{{ c.name }}</a-select-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item :label="T('Name')" name="name" :rules="[{ required: true }]">
+          <a-input v-model:value="formData.name" />
+        </a-form-item>
+        <a-form-item :label="T('Color')" name="color" :rules="[{ required: true }]">
+          <a-input v-model:value="formData.color" />
           <div class="colors">
-            <div style="background-color: var(--tag-bg-color)" class="colorbox">
-              <div :style="{backgroundColor: currentColor}" class="dot">
-              </div>
+            <div class="colorbox">
+              <div :style="{ backgroundColor: formData.color }" class="dot"></div>
             </div>
           </div>
-        </el-form-item>
-        <el-form-item>
-          <el-button @click="formVisible = false">{{ T('Cancel') }}</el-button>
-          <el-button @click="submit" type="primary">{{ T('Submit') }}</el-button>
-        </el-form-item>
-      </el-form>
-    </el-dialog>
+        </a-form-item>
+      </a-form>
+    </a-modal>
   </div>
 </template>
 
 <script setup>
-  import { onMounted, watch, onActivated } from 'vue'
+  import { onMounted, watch, onActivated, computed } from 'vue'
   import { useRepositories } from '@/views/tag'
   import { T } from '@/utils/i18n'
 
   const {
-    listRes,
-    listQuery,
-    getList,
-    handlerQuery,
-    del,
-    formVisible,
-    formData,
-    toEdit,
-    toAdd,
-    submit,
-    activeChange,
-    currentColor,
-
-    collectionListRes,
-    getCollectionList,
-
-    collectionListResForUpdate,
-    getCollectionListForUpdate,
+    listRes, listQuery, getList, handlerQuery, del,
+    formVisible, formData, toEdit, toAdd, submit,
+    collectionListRes, getCollectionList,
+    collectionListResForUpdate, getCollectionListForUpdate,
   } = useRepositories('my')
+
+  const columns = computed(() => [
+    { title: 'ID', dataIndex: 'id', key: 'id', align: 'center' },
+    { title: T('AddressBook'), key: 'collection_id', align: 'center', width: 150 },
+    { title: T('Name'), dataIndex: 'name', key: 'name', align: 'center' },
+    { title: T('Color'), key: 'color', align: 'center' },
+    { title: T('CreatedAt'), dataIndex: 'created_at', key: 'created_at', align: 'center' },
+    { title: T('UpdatedAt'), dataIndex: 'updated_at', key: 'updated_at', align: 'center' },
+    { title: T('Actions'), key: 'actions', align: 'center' },
+  ]);
 
   onMounted(getList)
   onActivated(getList)
 
   watch(() => listQuery.page, getList)
-
   watch(() => listQuery.page_size, handlerQuery)
 
   onMounted(getCollectionList)
   onMounted(getCollectionListForUpdate)
-
 </script>
 
 <style scoped lang="scss">
-.list-query .el-select {
-  --el-select-width: 160px;
-}
-
 .colors {
   display: flex;
-  justify-content: center;
   align-items: center;
+  margin-top: 10px;
 
   .colorbox {
     width: 50px;
     height: 30px;
+    border: 1px solid #d9d9d9;
     display: flex;
     justify-content: center;
     align-items: center;
 
     .dot {
-      width: 10px;
-      height: 10px;
+      width: 20px;
+      height: 20px;
       display: block;
       border-radius: 50%;
     }
   }
-
 }
-
 </style>

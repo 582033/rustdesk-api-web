@@ -1,7 +1,7 @@
 import { reactive, ref } from 'vue'
 import { list as admin_list, create as admin_create, update as admin_update, remove as admin_remove } from '@/api/address_book_collection'
 import { list as my_list, create as my_create, update as my_update, remove as my_remove } from '@/api/my/address_book_collection'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { message, Modal } from 'ant-design-vue'
 import { T } from '@/utils/i18n'
 
 const apis = {
@@ -30,26 +30,31 @@ export function useRepositories (api_type = 'my') {
     }
   }
   const handlerQuery = () => {
-    if (listQuery.page === 1) {
-      getList()
-    } else {
-      listQuery.page = 1
-    }
+    listQuery.page = 1
+    getList()
+  }
+
+  const handlerReset = () => {
+    listQuery.page = 1
+    listQuery.user_id = ''
+    getList()
   }
 
   const del = async (row) => {
-    const cf = await ElMessageBox.confirm(T('Confirm?', { param: T('Delete') }), {
-      confirmButtonText: T('Confirm'),
-      cancelButtonText: T('Cancel'),
-      type: 'warning',
-    }).catch(_ => false)
+    const cf = await new Promise(resolve => {
+      Modal.confirm({
+        title: T('Confirm?', { param: T('Delete') }),
+        onOk: () => resolve(true),
+        onCancel: () => resolve(false)
+      })
+    })
     if (!cf) {
       return false
     }
 
     const res = await apis[api_type].remove({ id: row.id }).catch(_ => false)
     if (res) {
-      ElMessage.success(T('OperationSuccess'))
+      message.success(T('OperationSuccess'))
       getList()
     }
   }
@@ -80,7 +85,7 @@ export function useRepositories (api_type = 'my') {
     const api = formData.id ? apis[api_type].update : apis[api_type].create
     const res = await api(formData).catch(_ => false)
     if (res) {
-      ElMessage.success(T('OperationSuccess'))
+      message.success(T('OperationSuccess'))
       formVisible.value = false
       getList()
     }
@@ -90,11 +95,13 @@ export function useRepositories (api_type = 'my') {
     listQuery,
     getList,
     handlerQuery,
+    handlerReset,
     del,
     formVisible,
     formData,
     toEdit,
     toAdd,
     submit,
+    handlerReset,
   }
 }

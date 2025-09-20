@@ -1,136 +1,114 @@
 <template>
   <div>
-    <el-card class="list-query" shadow="hover">
-      <el-form inline label-width="80px">
-        <el-form-item :label="T('Peer')">
-          <el-input v-model="listQuery.peer_id" clearable></el-input>
-        </el-form-item>
-        <el-form-item :label="T('FromPeer')">
-          <el-input v-model="listQuery.from_peer" clearable></el-input>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handlerQuery">{{ T('Filter') }}</el-button>
-          <el-button type="danger" @click="toBatchDelete">{{ T('BatchDelete') }}</el-button>
-          <el-button type="success" @click="toExport">{{ T('Export') }}</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
-    <el-card class="list-body" shadow="hover">
-      <el-table :data="listRes.list" v-loading="listRes.loading" border max-height="750" @selection-change="handleSelectionChange">
-        <el-table-column type="selection" align="center" width="50"/>
-        <el-table-column prop="id" label="ID" align="center" width="100"/>
-        <el-table-column :label="T('Peer')" prop="peer_id" align="center" width="120"/>
-        <el-table-column :label="T('FromPeer')" prop="from_peer" align="center" width="120"/>
-        <el-table-column :label="T('FromName')" prop="from_name" align="center" width="120"/>
-        <el-table-column :label="T('Ip')" prop="ip" align="center" width="120"/>
-        <el-table-column prop="type" :label="T('Type')" align="center" width="200">
-          <template #default="{row}">
-            <el-tag v-if="row.type === 1" type="warning"> {{ T('ToRemote') }}:
-              <el-icon>
-                <Right/>
-              </el-icon>
-              {{ row.peer_id }}
-            </el-tag>
-            <el-tag v-else>{{ T('ToLocal') }}:
-              <el-icon>
-                <Right/>
-              </el-icon>
-              {{ row.from_peer }}
-            </el-tag>
+    <a-card class="list-query" :bordered="false">
+      <a-form layout="inline" :model="listQuery">
+        <a-form-item :label="T('Peer')"><a-input v-model:value="listQuery.peer_id" clearable /></a-form-item>
+        <a-form-item :label="T('FromPeer')"><a-input v-model:value="listQuery.from_peer" clearable /></a-form-item>
+        <a-form-item>
+          <a-button type="primary" @click="handlerQuery">{{ T('Filter') }}</a-button>
+          <a-button type="primary" danger @click="toBatchDelete" style="margin-left: 8px;">{{ T('BatchDelete') }}</a-button>
+          <a-button type="primary" @click="toExport" style="margin-left: 8px;">{{ T('Export') }}</a-button>
+        </a-form-item>
+      </a-form>
+    </a-card>
+    <a-card class="list-body" :bordered="false">
+      <a-table :data-source="listRes.list" :loading="listRes.loading" :columns="columns" bordered :pagination="false" :scroll="{ y: 750 }" :row-selection="{ selectedRowKeys: selectedRowKeys, onChange: onSelectChange }" rowKey="id">
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'type'">
+            <a-tag v-if="record.type === 1" color="warning"> {{ T('ToRemote') }}:
+              <ArrowRightOutlined />
+              {{ record.peer_id }}
+            </a-tag>
+            <a-tag v-else>{{ T('ToLocal') }}:
+              <ArrowRightOutlined />
+              {{ record.from_peer }}
+            </a-tag>
           </template>
-        </el-table-column>
-        <el-table-column prop="num" :label="T('Num')" align="center" width="100"/>
-        <el-table-column :label="T('FileInfo')" align="center" width="300">
-          <template #default="{row}">
-            <template v-if="!row.is_file">
-              <el-table size="small" :data="row.info?.files?.filter((v,k) => k<showDirFileNum)" fit>
-                <el-table-column prop="0" :label="T('FileName')" align="center" width="150" show-overflow-tooltip></el-table-column>
-                <el-table-column prop="1" :label="T('Size')" align="center">
-                  <template #default="{row:_row}">
-                    {{ sizeFormat(_row[1]) }}
-                  </template>
-                </el-table-column>
-              </el-table>
-              <el-button size="small" v-if="row.info.files.length>showDirFileNum" style="width: 100%;margin-top: 5px" type="primary" @click="showAllFile(row.info.files)">
-                {{ T('More') }}({{ row.info.files.length - showDirFileNum }})
-              </el-button>
+          <template v-if="column.key === 'file_info'">
+            <template v-if="!record.is_file">
+              <a-table size="small" :data-source="record.info?.files?.slice(0, showDirFileNum)" :pagination="false" style="margin-bottom: 5px;">
+                <template #bodyCell="{ column: col, record: fileRecord }">
+                  <template v-if="col.key === 'name'"><span :title="fileRecord[0]">{{ fileRecord[0] }}</span></template>
+                  <template v-if="col.key === 'size'">{{ sizeFormat(fileRecord[1]) }}</template>
+                </template>
+              </a-table>
+              <a-button v-if="record.info.files.length > showDirFileNum" type="primary" size="small" @click="showAllFile(record.info.files)" style="width: 100%;">{{ T('More') }}({{ record.info.files.length - showDirFileNum }})</a-button>
             </template>
-            <div v-else>
-              {{ sizeFormat(row.info.files[0][1]) }}
-            </div>
-
+            <div v-else>{{ sizeFormat(record.info.files[0][1]) }}</div>
           </template>
-        </el-table-column>
-        <el-table-column prop="path" :label="T('Path')" align="center" width="150" show-overflow-tooltip/>
-        <el-table-column prop="uuid" label="uuid" align="center" width="120" show-overflow-tooltip/>
-        <el-table-column prop="created_at" :label="T('CreatedAt')" align="center" min-width="120"/>
-        <el-table-column :label="T('Actions')" align="center" width="150" fixed="right">
-          <template #default="{row}">
-            <el-button type="danger" @click="del(row)">{{ T('Delete') }}</el-button>
+          <template v-if="column.key === 'actions'">
+            <a-button type="primary" danger size="small" @click="del(record)">{{ T('Delete') }}</a-button>
           </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
-    <el-card class="list-page" shadow="hover">
-      <el-pagination background
-                     layout="prev, pager, next, sizes, jumper"
-                     :page-sizes="[10,20,50,100]"
-                     v-model:page-size="listQuery.page_size"
-                     v-model:current-page="listQuery.page"
-                     :total="listRes.total">
-      </el-pagination>
-    </el-card>
-    <el-dialog v-model="allFilesVisible" :title="T('File')">
-      <el-table :data="showFiles" max-height="800px">
-        <el-table-column type="index" :label="T('IndexNum')" width="120" align="center"></el-table-column>
-        <el-table-column prop="0" :label="T('FileName')" align="center"></el-table-column>
-        <el-table-column prop="1" :label="T('Size')" align="center">
-          <template #default="{row:_row}">
-            {{ sizeFormat(_row[1]) }}
-          </template>
-        </el-table-column>
-      </el-table>
-      <el-button @click="allFilesVisible=false" style="margin-top: 20px;width: 100%" type="primary">{{ T('Close') }}</el-button>
-    </el-dialog>
+        </template>
+      </a-table>
+      <a-pagination
+          style="margin-top: 12px; text-align: right;"
+          v-model:current="listQuery.page"
+          v-model:pageSize="listQuery.page_size"
+          :total="listRes.total"
+          show-size-changer
+          show-quick-jumper
+          :show-total="total => `${T('Total')} ${total} ${T('Items')}`"
+      />
+    </a-card>
+    <a-modal v-model:open="allFilesVisible" :title="T('File')" @ok="allFilesVisible = false" @cancel="allFilesVisible = false">
+      <a-table :data-source="showFiles" :pagination="false" :scroll="{ y: 800 }">
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'index'">{{ record.index }}</template>
+          <template v-if="column.key === 'name'">{{ record[0] }}</template>
+          <template v-if="column.key === 'size'">{{ sizeFormat(record[1]) }}</template>
+        </template>
+      </a-table>
+    </a-modal>
   </div>
 </template>
 
 <script setup>
-  import { onActivated, onMounted, ref, watch } from 'vue'
+  import { onActivated, onMounted, ref, watch, computed } from 'vue'
   import { useFileRepositories } from '@/views/audit/reponsitories'
   import { T } from '@/utils/i18n'
   import { sizeFormat } from '@/utils/file'
-  import { Right } from '@element-plus/icons'
 
   const showDirFileNum = 3
   const {
-    listRes,
-    listQuery,
-    getList,
-    handlerQuery,
-    del,
-    batchdel,
-    toExport,
+    listRes, listQuery, getList, handlerQuery, del, batchdel, toExport,
   } = useFileRepositories()
+
+  const columns = computed(() => [
+    { title: 'ID', dataIndex: 'id', key: 'id', align: 'center', width: 100 },
+    { title: T('Peer'), dataIndex: 'peer_id', key: 'peer_id', align: 'center', width: 120 },
+    { title: T('FromPeer'), dataIndex: 'from_peer', key: 'from_peer', align: 'center', width: 120 },
+    { title: T('FromName'), dataIndex: 'from_name', key: 'from_name', align: 'center', width: 120 },
+    { title: T('Ip'), dataIndex: 'ip', key: 'ip', align: 'center', width: 120 },
+    { title: T('Type'), key: 'type', align: 'center', width: 200 },
+    { title: T('Num'), dataIndex: 'num', key: 'num', align: 'center', width: 100 },
+    { title: T('FileInfo'), key: 'file_info', align: 'center', width: 300 },
+    { title: T('Path'), dataIndex: 'path', key: 'path', align: 'center', width: 150, ellipsis: true },
+    { title: 'UUID', dataIndex: 'uuid', key: 'uuid', align: 'center', width: 120, ellipsis: true },
+    { title: T('CreatedAt'), dataIndex: 'created_at', key: 'created_at', align: 'center', minWidth: 120 },
+    { title: T('Actions'), key: 'actions', align: 'center', width: 150, fixed: 'right' },
+  ]);
 
   onMounted(getList)
   onActivated(getList)
 
   watch(() => listQuery.page, getList)
-
   watch(() => listQuery.page_size, handlerQuery)
 
   const allFilesVisible = ref(false)
   const showFiles = ref([])
   const showAllFile = (files) => {
-    showFiles.value = files
+    showFiles.value = files.map((file, index) => ({ index: index + 1, 0: file[0], 1: file[1] }))
     allFilesVisible.value = true
   }
 
+  const selectedRowKeys = ref([]);
+  const onSelectChange = (keys, selectedRows) => {
+    selectedRowKeys.value = keys;
+    multipleSelection.value = selectedRows;
+  };
+
   const multipleSelection = ref([])
-  const handleSelectionChange = (val) => {
-    multipleSelection.value = val
-  }
   const toBatchDelete = () => {
     if (multipleSelection.value.length === 0) {
       return
@@ -140,5 +118,4 @@
 </script>
 
 <style scoped lang="scss">
-
 </style>

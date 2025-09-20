@@ -1,64 +1,54 @@
 <template>
   <div>
-    <el-card class="list-query" shadow="hover">
-      <el-form inline label-width="80px">
-        <el-form-item :label="T('User')">
-          <el-select v-model="listQuery.user_id" clearable>
-            <el-option
+    <a-card class="list-query" :bordered="false">
+      <a-form layout="inline" :model="listQuery">
+        <a-form-item :label="T('User')">
+          <a-select v-model:value="listQuery.user_id" clearable style="width: 180px;">
+            <a-select-option
                 v-for="item in allUsers"
                 :key="item.id"
-                :label="item.username"
                 :value="item.id"
-            ></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handlerQuery">{{ T('Filter') }}</el-button>
-          <el-button type="danger" @click="toBatchDelete">{{ T('BatchDelete') }}</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
-    <el-card class="list-body" shadow="hover">
-      <el-table :data="listRes.list" v-loading="listRes.loading" border @selection-change="handleSelectionChange">
-        <el-table-column type="selection" align="center" width="50"/>
-        <el-table-column prop="id" label="id" align="center" width="100"/>
-        <el-table-column :label="T('Owner')" align="center">
-          <template #default="{row}">
-            <span v-if="row.user_id"> <el-tag>{{ allUsers?.find(u => u.id === row.user_id)?.username }}</el-tag> </span>
+            >{{ item.username }}</a-select-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item>
+          <a-button type="primary" @click="handlerQuery">{{ T('Filter') }}</a-button>
+          <a-button type="primary" danger @click="toBatchDelete" style="margin-left: 8px;">{{ T('BatchDelete') }}</a-button>
+        </a-form-item>
+      </a-form>
+    </a-card>
+    <a-card class="list-body" :bordered="false">
+      <a-table :data-source="listRes.list" :loading="listRes.loading" :columns="columns" bordered :pagination="false" :row-selection="{ selectedRowKeys: selectedRowKeys, onChange: onSelectChange }" rowKey="id">
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'owner'">
+            <span v-if="record.user_id"> <a-tag>{{ allUsers?.find(u => u.id === record.user_id)?.username }}</a-tag> </span>
           </template>
-        </el-table-column>
-        <el-table-column :label="T('Token')" align="center">
-          <template #default="{row}">
-            <span> {{ maskToken(row.token) }} </span>
+          <template v-if="column.key === 'token'">
+            <span> {{ maskToken(record.token) }} </span>
           </template>
-        </el-table-column>
-        <el-table-column prop="created_at" :label="T('CreatedAt')" align="center"/>
-        <el-table-column :label="T('ExpireTime')" prop="expired_at" align="center">
-          <template #default="{row}">
-            <el-tag :type="expired(row)?'info':'success'">{{ row.expired_at ? new Date(row.expired_at * 1000).toLocaleString() : '-' }}</el-tag>
+          <template v-if="column.key === 'expire_time'">
+            <a-tag :color="expired(record) ? 'default' : 'success'">{{ record.expired_at ? new Date(record.expired_at * 1000).toLocaleString() : '-' }}</a-tag>
           </template>
-        </el-table-column>
-        <el-table-column :label="T('Actions')" align="center" width="400">
-          <template #default="{row}">
-            <el-button type="danger" @click="del(row)">{{ T('Logout') }}</el-button>
+          <template v-if="column.key === 'actions'">
+            <a-button type="primary" danger size="small" @click="del(record)">{{ T('Logout') }}</a-button>
           </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
-    <el-card class="list-page" shadow="hover">
-      <el-pagination background
-                     layout="prev, pager, next, sizes, jumper"
-                     :page-sizes="[10,20,50,100]"
-                     v-model:page-size="listQuery.page_size"
-                     v-model:current-page="listQuery.page"
-                     :total="listRes.total">
-      </el-pagination>
-    </el-card>
+        </template>
+      </a-table>
+      <a-pagination
+          style="margin-top: 12px; text-align: right;"
+          v-model:current="listQuery.page"
+          v-model:pageSize="listQuery.page_size"
+          :total="listRes.total"
+          show-size-changer
+          show-quick-jumper
+          :show-total="total => `${T('Total')} ${total} ${T('Items')}`"
+      />
+    </a-card>
   </div>
 </template>
 
 <script setup>
-  import { onActivated, onMounted, ref, watch } from 'vue'
+  import { onActivated, onMounted, ref, watch, computed } from 'vue'
   import { loadAllUsers } from '@/global'
   import { useRepositories } from '@/views/user/token.js'
   import { T } from '@/utils/i18n'
@@ -67,32 +57,34 @@
   getAllUsers()
 
   const {
-    listRes,
-    listQuery,
-    getList,
-    handlerQuery,
-    del,
-    batchDelete,
+    listRes, listQuery, getList, handlerQuery, del, batchDelete,
   } = useRepositories()
+
+  const columns = computed(() => [
+    { title: 'id', dataIndex: 'id', key: 'id', align: 'center', width: 100 },
+    { title: T('Owner'), key: 'owner', align: 'center' },
+    { title: T('Token'), key: 'token', align: 'center' },
+    { title: T('CreatedAt'), dataIndex: 'created_at', key: 'created_at', align: 'center' },
+    { title: T('ExpireTime'), key: 'expire_time', align: 'center' },
+    { title: T('Actions'), key: 'actions', align: 'center', width: 400 },
+  ]);
 
   onMounted(getList)
   onActivated(getList)
 
   watch(() => listQuery.page, getList)
-
   watch(() => listQuery.page_size, handlerQuery)
-  const maskToken = (token) => {
-    return token.slice(0, 4) + '****' + token.slice(-4)
-  }
-  const expired = (row) => {
-    const now = new Date().getTime()
-    return row.expired_at * 1000 < now
-  }
+
+  const maskToken = (token) => token.slice(0, 4) + '****' + token.slice(-4)
+  const expired = (row) => new Date().getTime() > row.expired_at * 1000
+
+  const selectedRowKeys = ref([]);
+  const onSelectChange = (keys, selectedRows) => {
+    selectedRowKeys.value = keys;
+    multipleSelection.value = selectedRows;
+  };
 
   const multipleSelection = ref([])
-  const handleSelectionChange = (val) => {
-    multipleSelection.value = val
-  }
   const toBatchDelete = () => {
     if (multipleSelection.value.length === 0) {
       return
@@ -102,9 +94,4 @@
 </script>
 
 <style scoped lang="scss">
-.list-query .el-select {
-  --el-select-width: 160px;
-}
-
-
 </style>

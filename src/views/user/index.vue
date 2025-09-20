@@ -1,95 +1,86 @@
 <template>
   <div>
-    <el-card class="list-query" shadow="hover">
-      <el-form inline label-width="80px">
-        <el-form-item :label="T('Username')">
-          <el-input v-model="listQuery.username"></el-input>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handlerQuery">{{ T('Filter') }}</el-button>
-          <el-button type="danger" @click="toAdd">{{ T('Add') }}</el-button>
-          <el-button type="success" @click="toExport">{{ T('Export') }}</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
-    <el-card class="list-body" shadow="hover">
-      <el-table :data="listRes.list" v-loading="listRes.loading" border>
-        <el-table-column prop="id" label="ID" align="center"></el-table-column>
-        <el-table-column prop="username" :label="T('Username')" align="center"/>
-        <el-table-column prop="email" :label="T('Email')" align="center"/>
-        <el-table-column prop="nickname" :label="T('Nickname')" align="center"/>
-        <el-table-column :label="T('Group')" align="center">
-          <template #default="{row}">
-            <span v-if="row.group_id"> <el-tag>{{ listRes.groups?.find(g => g.id === row.group_id)?.name }} </el-tag> </span>
+    <a-card class="list-query" :bordered="false">
+      <a-form layout="inline" :model="listQuery">
+        <a-form-item :label="T('Username')">
+          <a-input v-model:value="listQuery.username" />
+        </a-form-item>
+        <a-form-item>
+          <a-button type="primary" @click="handlerQuery">{{ T('Filter') }}</a-button>
+          <a-button type="primary" @click="toAdd" style="margin-left: 8px;">{{ T('Add') }}</a-button>
+          <a-button type="primary" @click="toExport" style="margin-left: 8px;">{{ T('Export') }}</a-button>
+        </a-form-item>
+      </a-form>
+    </a-card>
+    <a-card class="list-body" :bordered="false">
+      <a-table :data-source="listRes.list" :loading="listRes.loading" :columns="columns" bordered :pagination="false" rowKey="id">
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'group_id'">
+            <span v-if="record.group_id"> <a-tag>{{ listRes.groups?.find(g => g.id === record.group_id)?.name }} </a-tag> </span>
             <span v-else> - </span>
           </template>
-        </el-table-column>
-        <el-table-column :label="T('Status')" align="center">
-          <template #default="{row}">
-            <el-switch v-model="row.status"
-                       :active-value="ENABLE_STATUS"
-                       :inactive-value="DISABLE_STATUS"
-                       @change="changeStatus(row)"
-            ></el-switch>
+          <template v-if="column.key === 'status'">
+            <a-switch :checked="record.status === ENABLE_STATUS" @change="checked => changeStatus(record, checked)" />
           </template>
-        </el-table-column>
-        <el-table-column prop="remark" :label="T('Remark')" align="center"/>
-        <el-table-column prop="created_at" :label="T('CreatedAt')" align="center"/>
-        <el-table-column prop="updated_at" :label="T('UpdatedAt')" align="center"/>
-        <el-table-column :label="T('Actions')" align="center" width="650">
-          <template #default="{row}">
-            <el-button @click="toTag(row)">{{ T('UserTags') }}</el-button>
-            <el-button @click="toAddressBook(row)">{{ T('UserAddressBook') }}</el-button>
-            <el-button @click="toEdit(row)">{{ T('Edit') }}</el-button>
-            <el-button type="info" @click="copyCredentials(row)">{{ T('Copy') }}</el-button>
-            <el-button type="warning" @click="changePass(row)">{{ T('ResetPassword') }}</el-button>
-            <el-button type="danger" @click="remove(row)">{{ T('Delete') }}</el-button>
+          <template v-if="column.key === 'actions'">
+            <div class="actions-cell">
+              <a-button size="small" @click="toTag(record)">{{ T('UserTags') }}</a-button>
+              <a-button size="small" @click="toAddressBook(record)">{{ T('UserAddressBook') }}</a-button>
+              <a-button size="small" @click="toEdit(record)">{{ T('Edit') }}</a-button>
+              <a-button type="dashed" size="small" @click="copyCredentials(record)">{{ T('Copy') }}</a-button>
+              <a-button type="dashed" danger size="small" @click="changePass(record)">{{ T('ResetPassword') }}</a-button>
+              <a-button type="primary" danger size="small" @click="remove(record)">{{ T('Delete') }}</a-button>
+            </div>
           </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
-    <el-card class="list-page" shadow="hover">
-      <el-pagination background
-                     layout="prev, pager, next, sizes, jumper"
-                     :page-sizes="[10,20,50,100]"
-                     v-model:page-size="listQuery.page_size"
-                     v-model:current-page="listQuery.page"
-                     :total="listRes.total">
-      </el-pagination>
-    </el-card>
+        </template>
+      </a-table>
+      <a-pagination
+          style="margin-top: 12px; text-align: right;"
+          v-model:current="listQuery.page"
+          v-model:pageSize="listQuery.page_size"
+          :total="listRes.total"
+          show-size-changer
+          show-quick-jumper
+          :show-total="total => `${T('Total')} ${total} ${T('Items')}`"
+      />
+    </a-card>
   </div>
 </template>
 
 <script setup>
+  import { handleClipboard } from '@/utils/clipboard'
   import { useRepositories, useDel, useToEditOrAdd, useChangePwd } from '@/views/user/composables'
   import { T } from '@/utils/i18n'
   import { DISABLE_STATUS, ENABLE_STATUS } from '@/utils/common_options'
   import { update } from '@/api/user'
-  import { ElMessageBox, ElMessage } from 'element-plus'
-  import { onMounted, watch } from 'vue'
+  import { message } from 'ant-design-vue'
+  import { onMounted, watch, computed } from 'vue'
 
-  //列表
   const {
-    listRes,
-    listQuery,
-    handlerQuery,
-    getList,
-    getGroups,
-    toExport,
+    listRes, listQuery, handlerQuery, getList, getGroups, toExport,
   } = useRepositories()
 
-  onMounted(getGroups)
+  const columns = computed(() => [
+    { title: 'ID', dataIndex: 'id', key: 'id', align: 'center' },
+    { title: T('Username'), dataIndex: 'username', key: 'username', align: 'center' },
+    { title: T('Email'), dataIndex: 'email', key: 'email', align: 'center' },
+    { title: T('Nickname'), dataIndex: 'nickname', key: 'nickname', align: 'center' },
+    { title: T('Group'), key: 'group_id', align: 'center' },
+    { title: T('Status'), key: 'status', align: 'center' },
+    { title: T('Remark'), dataIndex: 'remark', key: 'remark', align: 'center' },
+    { title: T('CreatedAt'), dataIndex: 'created_at', key: 'created_at', align: 'center' },
+    { title: T('UpdatedAt'), dataIndex: 'updated_at', key: 'updated_at', align: 'center' },
+    { title: T('Actions'), key: 'actions', align: 'center', width: 650 },
+  ]);
 
+  onMounted(getGroups)
   onMounted(getList)
 
   watch(() => listQuery.page, getList)
   watch(() => listQuery.page_size, handlerQuery)
 
   const { toEdit, toAdd, toAddressBook, toTag } = useToEditOrAdd()
-
   const { changePass } = useChangePwd()
-
-  //删除
   const { del } = useDel()
   const remove = async (row) => {
     const res = await del(row.id)
@@ -102,50 +93,31 @@
     const username = row.username
     const password = btoa(username + '\n')
     const textToCopy = `您的用户名为 ${username} 密码为 ${password}`
-    const copyToClipboard = async (text) => {
-      try {
-        await navigator.clipboard.writeText(text);
-      } catch (err) {
-        const textArea = document.createElement('textarea');
-        textArea.value = text;
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        try {
-          document.execCommand('copy');
-        } catch (copyErr) {
-          console.error('Fallback copy failed:', copyErr);
-          throw copyErr;
-        } finally {
-          document.body.removeChild(textArea);
-        }
-      }
-    };
     try {
-      await copyToClipboard(textToCopy)
-      ElMessage.success('已成功复制到剪贴板')
+      await handleClipboard(textToCopy)
+      message.success('已成功复制到剪贴板')
     } catch (err) {
-      ElMessage.error('复制失败，请稍后重试')
+      message.error('复制失败，请稍后重试')
       console.error('Clipboard write failed: ', err)
     }
   }
 
-  const changeStatus = async (row) => {
-    /*const confirm = await ElMessageBox.confirm(T('Confirm?', { param: T('Update') }), {
-      confirmButtonText: T('Confirm'),
-      cancelButtonText: T('Cancel'),
-    }).catch(_ => false)
-    if (!confirm) {
-      return false
-    }*/
-    const res = await update(row).catch(_ => false)
+  const changeStatus = async (row, checked) => {
+    const newStatus = checked ? ENABLE_STATUS : DISABLE_STATUS;
+    const res = await update({ ...row, status: newStatus }).catch(_ => false)
     if (res) {
-      ElMessage.success(T('OperationSuccess'))
-      getList(listQuery)
+      message.success(T('OperationSuccess'))
     }
+    // No matter success or fail, refresh the list to get the real status
+    getList(listQuery)
   }
-
 </script>
 
 <style scoped>
+.actions-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
 </style>

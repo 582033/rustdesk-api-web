@@ -1,7 +1,7 @@
 import { reactive, ref } from 'vue'
 import { list as admin_fetchPeers } from '@/api/peer'
 import { list as my_fetchPeers } from '@/api/my/peer'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { message, Modal } from 'ant-design-vue'
 import { T } from '@/utils/i18n'
 import { batchDelete as admin_batchDelete, list as admin_list, remove as admin_remove } from '@/api/login_log'
 import { batchDelete as my_batchDelete, list as my_list, remove as my_remove } from '@/api/my/login_log'
@@ -57,18 +57,20 @@ export function useRepositories (api_type = 'my') {
   }
 
   const del = async (row) => {
-    const cf = await ElMessageBox.confirm(T('Confirm?', { param: T('Delete') }), {
-      confirmButtonText: T('Confirm'),
-      cancelButtonText: T('Cancel'),
-      type: 'warning',
-    }).catch(_ => false)
+    const cf = await new Promise(resolve => {
+      Modal.confirm({
+        title: T('Confirm?', { param: T('Delete') }),
+        onOk: () => resolve(true),
+        onCancel: () => resolve(false)
+      })
+    })
     if (!cf) {
       return false
     }
 
     const res = await apis[api_type].remove({ id: row.id }).catch(_ => false)
     if (res) {
-      ElMessage.success(T('OperationSuccess'))
+      message.success(T('OperationSuccess'))
       getList()
     }
   }
@@ -76,21 +78,23 @@ export function useRepositories (api_type = 'my') {
   const batchdel = async (rows) => {
     const ids = rows.map(r => r.id)
     if (!ids.length) {
-      ElMessage.warning(T('PleaseSelectData'))
+      message.warning(T('PleaseSelectData'))
       return false
     }
-    const cf = await ElMessageBox.confirm(T('Confirm?', { param: T('BatchDelete') }), {
-      confirmButtonText: T('Confirm'),
-      cancelButtonText: T('Cancel'),
-      type: 'warning',
-    }).catch(_ => false)
+    const cf = await new Promise(resolve => {
+      Modal.confirm({
+        title: T('Confirm?', { param: T('BatchDelete') }),
+        onOk: () => resolve(true),
+        onCancel: () => resolve(false)
+      })
+    })
     if (!cf) {
       return false
     }
 
     const res = await apis[api_type].batchDelete({ ids }).catch(_ => false)
     if (res) {
-      ElMessage.success(T('OperationSuccess'))
+      message.success(T('OperationSuccess'))
       getList()
     }
   }

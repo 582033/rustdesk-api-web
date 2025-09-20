@@ -1,31 +1,31 @@
 <template>
   <div class="oauth">
-    <el-card class="card">
+    <a-card class="card">
       <h2>{{ T('OauthBinding') }}</h2>
-      <el-form class="info" label-width="100px">
-        <el-form-item :label="T('Op')">
+      <a-form class="info" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+        <a-form-item :label="T('Op')">
           <div class="impt">{{ oauthInfo.op }}</div>
-        </el-form-item>
-        <el-form-item :label="T('ThirdName')">
+        </a-form-item>
+        <a-form-item :label="T('ThirdName')">
           <div class="impt">{{ oauthInfo.third_name }}</div>
-        </el-form-item>
-        <el-form-item label-width="0">
-          <el-button style="width: 100%" v-if="!resStatus" type="success" size="large" @click="toConfirm">{{ T('Bind') }}</el-button>
-        </el-form-item>
-        <el-form-item label-width="0">
-          <el-button style="width: 100%" size="large" @click="out">{{ T('Close') }}</el-button>
-        </el-form-item>
-      </el-form>
+        </a-form-item>
+        <a-form-item :wrapper-col="{ span: 24 }">
+          <a-button style="width: 100%" v-if="!resStatus" type="primary" size="large" @click="toConfirm">{{ T('Bind') }}</a-button>
+        </a-form-item>
+        <a-form-item :wrapper-col="{ span: 24 }">
+          <a-button style="width: 100%" size="large" @click="out">{{ T('Close') }}</a-button>
+        </a-form-item>
+      </a-form>
       {{ T('OauthCloseNote') }}
-    </el-card>
+    </a-card>
   </div>
 </template>
 
 <script setup>
-  import { ref, onMounted } from 'vue'
-  import { info, confirm, bindConfirm } from '@/api/oauth'
+  import { ref } from 'vue'
+  import { info, bindConfirm } from '@/api/oauth'
   import { useRoute, useRouter } from 'vue-router'
-  import { ElMessage } from 'element-plus'
+  import { message } from 'ant-design-vue'
   import { T } from '@/utils/i18n'
 
   const oauthInfo = ref({})
@@ -50,11 +50,11 @@
     if (res) {
       resStatus.value = 1
       if (res.data.device_type === 'webadmin') {
-        ElMessage.success(T('OperationSuccess'))
+        message.success(T('OperationSuccess'))
         //后台登录
         router.push('/')
       } else {
-        ElMessage.success(T('OperationSuccessAndCloseAfter3Seconds'))
+        message.success(T('OperationSuccessAndCloseAfter3Seconds'))
         setTimeout(_ => {
           out()
         }, 3000)
@@ -88,7 +88,7 @@
       line-height: 30px;
       margin-bottom: 50px;
 
-      ::v-deep(.el-form-item__label) {
+      :deep(.ant-form-item-label > label) {
         color: #fff;
       }
     }

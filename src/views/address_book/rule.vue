@@ -1,114 +1,76 @@
 <template>
   <div>
-    <el-card class="list-query" shadow="hover">
-      <el-form inline label-width="80px">
-        <el-form-item>
-          <el-button type="primary" @click="handlerQuery">{{ T('Filter') }}</el-button>
-          <el-button type="danger" @click="toAdd">{{ T('Add') }}</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
-    <el-card class="list-body" shadow="hover">
-      <el-table :data="listRes.list" v-loading="listRes.loading" border>
-        <el-table-column prop="rule" :label="T('Rule')" align="center">
-          <template #default="{row}">
-            <div>
-              {{ rules.find(r => r.value === row.rule)?.label }}
-            </div>
+    <a-card class="list-query" :bordered="false">
+      <a-form layout="inline">
+        <a-form-item>
+          <a-button type="primary" @click="handlerQuery">{{ T('Filter') }}</a-button>
+          <a-button type="primary" @click="toAdd" style="margin-left: 8px;">{{ T('Add') }}</a-button>
+        </a-form-item>
+      </a-form>
+    </a-card>
+    <a-card class="list-body" :bordered="false">
+      <a-table :data-source="listRes.list" :loading="listRes.loading" :columns="columns" bordered :pagination="false" rowKey="id">
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'rule'">
+            {{ rules.find(r => r.value === record.rule)?.label }}
           </template>
-        </el-table-column>
-        <el-table-column prop="type" :label="T('Type')" align="center">
-          <template #default="{row}">
-            <div>
-              {{ types.find(t => t.value === row.type)?.label }}
-            </div>
+          <template v-if="column.key === 'type'">
+            {{ types.find(t => t.value === record.type)?.label }}
           </template>
-        </el-table-column>
-        <el-table-column prop="to_id" :label="T('ShareTo')" align="center">
-          <template #default="{row}">
-            <div v-if="row.type===TYPE_U">
-              {{ users.find(u => u.id === row.to_id)?.username }}
-            </div>
-            <div v-else-if="row.type===TYPE_G">
-              {{ groups.find(g => g.id === row.to_id)?.name }}
-            </div>
+          <template v-if="column.key === 'to_id'">
+            <div v-if="record.type === TYPE_U">{{ users.find(u => u.id === record.to_id)?.username }}</div>
+            <div v-else-if="record.type === TYPE_G">{{ groups.find(g => g.id === record.to_id)?.name }}</div>
           </template>
-        </el-table-column>
-        <el-table-column prop="created_at" :label="T('CreatedAt')" align="center"/>
-        <!--        <el-table-column prop="updated_at" label="更新时间" align="center"/>-->
-        <el-table-column :label="T('Actions')" align="center" class-name="table-actions" width="300" fixed="right">
-          <template #default="{row}">
-            <el-button @click="toEdit(row)">{{ T('Edit') }}</el-button>
-            <el-button type="danger" @click="del(row)">{{ T('Delete') }}</el-button>
+          <template v-if="column.key === 'actions'">
+            <a-button size="small" @click="toEdit(record)">{{ T('Edit') }}</a-button>
+            <a-button type="primary" danger size="small" @click="del(record)" style="margin-left: 8px;">{{ T('Delete') }}</a-button>
           </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
-    <el-card class="list-page" shadow="hover">
-      <el-pagination background
-                     layout="prev, pager, next, sizes, jumper"
-                     :page-sizes="[10,20,50,100]"
-                     v-model:page-size="listQuery.page_size"
-                     v-model:current-page="listQuery.page"
-                     :total="listRes.total">
-      </el-pagination>
-    </el-card>
-    <el-dialog v-model="formVisible" width="800" :title="!formData.id?T('Create') :T('Update') " :close-on-click-modal="false">
-      <el-form class="dialog-form" ref="form" :model="formData" label-width="120px">
-        <el-form-item :label="T('AddressBookName')">
+        </template>
+      </a-table>
+      <a-pagination
+          style="margin-top: 12px; text-align: right;"
+          v-model:current="listQuery.page"
+          v-model:pageSize="listQuery.page_size"
+          :total="listRes.total"
+          show-size-changer
+          show-quick-jumper
+          :show-total="total => `${T('Total')} ${total} ${T('Items')}`"
+      />
+    </a-card>
+    <a-modal v-model:open="formVisible" :title="!formData.id ? T('Create') : T('Update')" @ok="submit" @cancel="formVisible = false" :mask-closable="false">
+      <a-form class="dialog-form" :model="formData" layout="vertical" style="margin-top: 20px;">
+        <a-form-item :label="T('AddressBookName')">
           {{ props.collection.name }}
-        </el-form-item>
-        <el-form-item :label="T('Rule')" prop="rule" required>
-          <el-radio-group v-model="formData.rule">
-            <el-radio v-for="item in rules" :key="item.value" :value="item.value">
-              {{ item.label }}
-            </el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item :label="T('Type')" prop="type" required>
-          <el-radio-group v-model="formData.type">
-            <el-radio v-for="item in types" :key="item.value" :value="parseInt(item.value)">
-              {{ item.label }}
-            </el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item :label="T('ShareTo')" prop="g_id" required>
-          <!--          <el-input-number v-model="formData.to_id"></el-input-number>-->
-          <div style="width: 30%">
-            <el-select v-model="formData.g_id" @change="changeGId">
-              <el-option
-                  v-for="item in groups"
-                  :key="item.id"
-                  :label="item.name"
-                  :value="item.id"
-              ></el-option>
-            </el-select>
-          </div>
-          <div style="width: 30%;margin-left: 20px">
-            <el-select v-model="formData.u_id" v-if="formData.type===TYPE_U">
-              <el-option
-                  v-for="item in users.filter(u => u.group_id === formData.g_id)"
-                  :key="item.id"
-                  :label="item.username"
-                  :value="item.id"
-              ></el-option>
-            </el-select>
-          </div>
-        </el-form-item>
-        <el-form-item>
-          <el-button @click="formVisible = false">{{ T('Cancel') }}</el-button>
-          <el-button @click="submit" type="primary">{{ T('Submit') }}</el-button>
-        </el-form-item>
-      </el-form>
-    </el-dialog>
+        </a-form-item>
+        <a-form-item :label="T('Rule')" name="rule" :rules="[{ required: true }]">
+          <a-radio-group v-model:value="formData.rule">
+            <a-radio v-for="item in rules" :key="item.value" :value="item.value">{{ item.label }}</a-radio>
+          </a-radio-group>
+        </a-form-item>
+        <a-form-item :label="T('Type')" name="type" :rules="[{ required: true }]">
+          <a-radio-group v-model:value="formData.type">
+            <a-radio v-for="item in types" :key="item.value" :value="parseInt(item.value)">{{ item.label }}</a-radio>
+          </a-radio-group>
+        </a-form-item>
+        <a-form-item :label="T('ShareTo')" name="g_id" :rules="[{ required: true }]">
+          <a-input-group compact>
+            <a-select v-model:value="formData.g_id" @change="changeGId" style="width: 50%;">
+              <a-select-option v-for="item in groups" :key="item.id" :value="item.id">{{ item.name }}</a-select-option>
+            </a-select>
+            <a-select v-model:value="formData.u_id" v-if="formData.type === TYPE_U" style="width: 50%;">
+              <a-select-option v-for="item in users.filter(u => u.group_id === formData.g_id)" :key="item.id" :value="item.id">{{ item.username }}</a-select-option>
+            </a-select>
+          </a-input-group>
+        </a-form-item>
+      </a-form>
+    </a-modal>
   </div>
 </template>
 
 <script setup>
-
   import { T } from '@/utils/i18n'
   import { useRepositories } from '@/views/address_book/rule'
-  import { onActivated, onMounted, watch } from 'vue'
+  import { onMounted, watch } from 'vue'
 
   const props = defineProps({
     collection: {
@@ -141,20 +103,24 @@
     changeGId,
   } = useRepositories(props.is_my ? 'my' : 'admin')
 
+  const columns = [
+    { title: T('Rule'), key: 'rule', align: 'center' },
+    { title: T('Type'), key: 'type', align: 'center' },
+    { title: T('ShareTo'), key: 'to_id', align: 'center' },
+    { title: T('CreatedAt'), dataIndex: 'created_at', key: 'created_at', align: 'center' },
+    { title: T('Actions'), key: 'actions', align: 'center', width: 300 },
+  ];
+
   formData.collection_id = props.collection.id
   formData.user_id = props.collection.user_id
   listQuery.collection_id = props.collection.id
 
   onMounted(getGroupUsers)
   onMounted(getList)
-  onActivated(getList)
 
   watch(() => listQuery.page, getList)
-
   watch(() => listQuery.page_size, handlerQuery)
-
 </script>
 
 <style scoped lang="scss">
-
 </style>

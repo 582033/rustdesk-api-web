@@ -1,76 +1,67 @@
 <template>
   <div>
-    <el-card class="list-query" shadow="hover">
-      <el-form inline label-width="80px">
-        <el-form-item>
-          <el-button type="primary" @click="handlerQuery">{{ T('Filter') }}</el-button>
-          <el-button type="danger" @click="toBatchDelete">{{ T('BatchDelete') }}</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
-    <el-card class="list-body" shadow="hover">
-      <el-table :data="listRes.list" v-loading="listRes.loading" border @selection-change="handleSelectionChange">
-        <el-table-column type="selection" align="center" width="50"/>
-        <el-table-column prop="id" label="ID" align="center" width="100"/>
-        <el-table-column prop="peer_id" :label="T('Peer')" align="center"/>
-        <el-table-column prop="created_at" :label="T('CreatedAt')" align="center"/>
-        <el-table-column :label="`${T('ExpireTime')} (${T('Second')})`" prop="expire" align="center">
-          <template #default="{row}">
-            <el-tag :type="expired(row)?'info':'success'">{{ row.expire ? row.expire : T('Forever') }}</el-tag>
+    <a-card class="list-query" :bordered="false">
+      <a-form layout="inline">
+        <a-form-item>
+          <a-button type="primary" @click="handlerQuery">{{ T('Filter') }}</a-button>
+          <a-button type="primary" danger @click="toBatchDelete" style="margin-left: 8px;">{{ T('BatchDelete') }}</a-button>
+        </a-form-item>
+      </a-form>
+    </a-card>
+    <a-card class="list-body" :bordered="false">
+      <a-table :data-source="listRes.list" :loading="listRes.loading" :columns="columns" bordered :pagination="false" :row-selection="{ selectedRowKeys: selectedRowKeys, onChange: onSelectChange }" rowKey="id">
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'expire'">
+            <a-tag :color="expired(record) ? 'default' : 'success'">{{ record.expire ? record.expire : T('Forever') }}</a-tag>
           </template>
-        </el-table-column>
-        <el-table-column :label="T('Actions')" align="center" width="400">
-          <template #default="{row}">
-            <el-button type="danger" @click="del(row)">{{ T('Delete') }}</el-button>
+          <template v-if="column.key === 'actions'">
+            <a-button type="primary" danger size="small" @click="del(record)">{{ T('Delete') }}</a-button>
           </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
-    <el-card class="list-page" shadow="hover">
-      <el-pagination background
-                     layout="prev, pager, next, sizes, jumper"
-                     :page-sizes="[10,20,50,100]"
-                     v-model:page-size="listQuery.page_size"
-                     v-model:current-page="listQuery.page"
-                     :total="listRes.total">
-      </el-pagination>
-    </el-card>
+        </template>
+      </a-table>
+      <a-pagination
+          style="margin-top: 12px; text-align: right;"
+          v-model:current="listQuery.page"
+          v-model:pageSize="listQuery.page_size"
+          :total="listRes.total"
+          show-size-changer
+          show-quick-jumper
+          :show-total="total => `${T('Total')} ${total} ${T('Items')}`"
+      />
+    </a-card>
   </div>
 </template>
 
 <script setup>
-  import { onActivated, onMounted, watch } from 'vue'
+  import { onActivated, onMounted, watch, computed, ref } from 'vue'
   import { T } from '@/utils/i18n'
   import { useRepositories } from '@/views/share_record'
 
   const {
-    listRes,
-    listQuery,
-    getList,
-    handlerQuery,
-    del,
-    multipleSelection,
-    toBatchDelete,
-    expired,
+    listRes, listQuery, getList, handlerQuery, del,
+    multipleSelection, toBatchDelete, expired,
   } = useRepositories('my')
+
+  const columns = computed(() => [
+    { title: 'ID', dataIndex: 'id', key: 'id', align: 'center', width: 100 },
+    { title: T('Peer'), dataIndex: 'peer_id', key: 'peer_id', align: 'center' },
+    { title: T('CreatedAt'), dataIndex: 'created_at', key: 'created_at', align: 'center' },
+    { title: `${T('ExpireTime')} (${T('Second')})`, key: 'expire', align: 'center' },
+    { title: T('Actions'), key: 'actions', align: 'center', width: 400 },
+  ]);
 
   onMounted(getList)
   onActivated(getList)
 
   watch(() => listQuery.page, getList)
-
   watch(() => listQuery.page_size, handlerQuery)
-  const handleSelectionChange = (val) => {
-    multipleSelection.value = val
-  }
-
-
+  
+  const selectedRowKeys = ref([]);
+  const onSelectChange = (keys, selectedRows) => {
+    selectedRowKeys.value = keys;
+    multipleSelection.value = selectedRows;
+  };
 </script>
 
 <style scoped lang="scss">
-.list-query .el-select {
-  --el-select-width: 160px;
-}
-
-
 </style>

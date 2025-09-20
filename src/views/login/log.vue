@@ -1,107 +1,112 @@
 <template>
   <div>
-    <el-card class="list-query" shadow="hover">
-      <el-form inline label-width="80px">
-        <el-form-item :label="T('User')">
-          <el-select v-model="listQuery.user_id" clearable>
-            <el-option
+    <a-card class="list-query" :bordered="false">
+      <a-form layout="inline" :model="listQuery" class="list-query-form">
+        <a-form-item :label="T('User')">
+          <a-select v-model:value="listQuery.user_id" clearable style="width: 180px;">
+            <a-select-option
                 v-for="item in allUsers"
                 :key="item.id"
                 :label="item.username"
                 :value="item.id"
-            ></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handlerQuery">{{ T('Filter') }}</el-button>
-          <el-button type="danger" @click="toBatchDelete">{{ T('BatchDelete') }}</el-button>
-          <el-button type="success" @click="toExport">{{ T('Export') }}</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
-    <el-card class="list-body" shadow="hover">
-      <el-table :data="listRes.list" v-loading="listRes.loading" border @selection-change="handleSelectionChange">
-        <el-table-column type="selection" align="center" width="50"/>
-        <el-table-column prop="id" label="ID" align="center" width="100"/>
-        <el-table-column :label="T('Owner')" align="center" width="120">
-          <template #default="{row}">
-            <span v-if="row.user_id"> <el-tag>{{ allUsers?.find(u => u.id === row.user_id)?.username }}</el-tag> </span>
+            >{{ item.username }}</a-select-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item>
+          <a-button type="primary" @click="handlerQuery">{{ T('Filter') }}</a-button>
+          <a-button type="primary" danger @click="toBatchDelete" style="margin-left: 8px;">{{ T('BatchDelete') }}</a-button>
+          <a-button type="primary" @click="toExport" style="margin-left: 8px;">{{ T('Export') }}</a-button>
+        </a-form-item>
+      </a-form>
+    </a-card>
+    <a-card class="list-body" :bordered="false">
+      <a-table :data-source="listRes.list" :loading="listRes.loading" :columns="columns" bordered :pagination="false" :row-selection="{ selectedRowKeys: selectedRowKeys, onChange: onSelectChange }" rowKey="id">
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'owner'">
+            <span v-if="record.user_id"> <a-tag>{{ allUsers?.find(u => u.id === record.user_id)?.username }}</a-tag> </span>
           </template>
-        </el-table-column>
-        <el-table-column prop="client" label="client" align="center" width="120"/>
-        <el-table-column prop="peer.id" :label="T('Peer')" align="center">
-          <template #default="{row}">
-            {{ row.device_id ? row.device_id : peer?.id }}
+          <template v-if="column.key === 'peer_id'">
+            {{ record.device_id ? record.device_id : record.peer?.id }}
           </template>
-        </el-table-column>
-        <el-table-column prop="uuid" label="uuid" align="center"/>
-        <el-table-column prop="ip" label="ip" align="center" width="150"/>
-        <el-table-column prop="type" label="type" align="center" width="100"/>
-        <el-table-column prop="platform" label="Platform/UA" align="center" width="120" show-overflow-tooltip/>
-        <el-table-column prop="created_at" :label="T('CreatedAt')" align="center"/>
-        <el-table-column :label="T('Actions')" align="center" width="400">
-          <template #default="{row}">
-            <el-button type="danger" @click="del(row)">{{ T('Delete') }}</el-button>
+          <template v-if="column.key === 'actions'">
+            <div class="actions-cell">
+              <a-button type="primary" danger size="small" @click="del(record)">{{ T('Delete') }}</a-button>
+            </div>
           </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
-    <el-card class="list-page" shadow="hover">
-      <el-pagination background
-                     layout="prev, pager, next, sizes, jumper"
-                     :page-sizes="[10,20,50,100]"
-                     v-model:page-size="listQuery.page_size"
-                     v-model:current-page="listQuery.page"
-                     :total="listRes.total">
-      </el-pagination>
-    </el-card>
+        </template>
+      </a-table>
+      <a-pagination
+          style="margin-top: 12px; text-align: right;"
+          v-model:current="listQuery.page"
+          v-model:pageSize="listQuery.page_size"
+          :total="listRes.total"
+          show-size-changer
+          show-quick-jumper
+          :show-total="total => `${T('Total')} ${total} ${T('Items')}`"
+      />
+    </a-card>
   </div>
 </template>
 
 <script setup>
-  import { onActivated, onMounted, ref, watch } from 'vue'
+  import { onActivated, onMounted, ref, watch, computed } from 'vue'
   import { loadAllUsers } from '@/global'
   import { useRepositories } from '@/views/login/log.js'
   import { T } from '@/utils/i18n'
-  import { list } from '@/api/peer'
   import { downBlob, jsonToCsv } from '@/utils/file'
 
   const { allUsers, getAllUsers } = loadAllUsers()
   getAllUsers()
 
   const {
-    listRes,
-    listQuery,
-    getList,
-    handlerQuery,
-    del,
-    batchdel,
-    toExport,
+    listRes, listQuery, getList, handlerQuery, del, batchdel, toExport,
   } = useRepositories('admin')
+
+  const columns = computed(() => [
+    { title: 'ID', dataIndex: 'id', key: 'id', align: 'center', width: 100 },
+    { title: 'Client', dataIndex: 'client', key: 'client', align: 'center', width: 120 },
+    { title: T('Owner'), key: 'owner', align: 'center', width: 120 },
+    { title: T('Peer'), key: 'peer_id', align: 'center' },
+    { title: 'UUID', dataIndex: 'uuid', key: 'uuid', align: 'center', ellipsis: true },
+    { title: 'IP', dataIndex: 'ip', key: 'ip', align: 'center' },
+    { title: 'Type', dataIndex: 'type', key: 'type', align: 'center' },
+    { title: 'Platform/UA', dataIndex: 'platform', key: 'platform', align: 'center', ellipsis: true },
+    { title: T('CreatedAt'), dataIndex: 'created_at', key: 'created_at', align: 'center' },
+    { title: T('Actions'), key: 'actions', align: 'center' },
+  ]);
 
   onMounted(getList)
   onActivated(getList)
 
   watch(() => listQuery.page, getList)
-
   watch(() => listQuery.page_size, handlerQuery)
+
+  const selectedRowKeys = ref([]);
+  const onSelectChange = (keys, selectedRows) => {
+    selectedRowKeys.value = keys;
+    multipleSelection.value = selectedRows;
+  };
+
   const multipleSelection = ref([])
-  const handleSelectionChange = (val) => {
-    multipleSelection.value = val
-  }
   const toBatchDelete = () => {
     if (multipleSelection.value.length === 0) {
       return
     }
     batchdel(multipleSelection.value)
   }
-
 </script>
 
 <style scoped lang="scss">
-.list-query .el-select {
-  --el-select-width: 160px;
+.list-query-form {
+  display: flex;
+  flex-wrap: wrap;
+  .ant-form-item {
+    margin-bottom: 12px;
+  }
 }
-
-
+.actions-cell {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
 </style>

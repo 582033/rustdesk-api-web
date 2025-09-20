@@ -1,125 +1,89 @@
 <template>
   <div>
-    <h4 v-html="T('ServerCmdTips', {wiki: '<a target=\'_blank\' href=\'https://github.com/lejianwen/rustdesk-api/wiki/Rustdesk-Command\'>WIKI</a>'})"></h4>
     <h5>
       <span>ID {{ T('Status') }}: </span>
-      <el-tag v-if="canSendIdServerCmd" type="success">{{ T('Available') }}</el-tag>
-      <el-tag v-else type="danger">{{ T('NotAvailable') }}</el-tag>
-      <el-button size="small" type="text" @click="refreshCanSendIdServerCmd">{{ T('Refresh') }}</el-button>
+      <a-tag v-if="canSendIdServerCmd" color="success">{{ T('Available') }}</a-tag>
+      <a-tag v-else color="error">{{ T('NotAvailable') }}</a-tag>
+      <a-button size="small" type="link" @click="refreshCanSendIdServerCmd">{{ T('Refresh') }}</a-button>
     </h5>
     <h5>
       <span>RELAY {{ T('Status') }}: </span>
-      <el-tag v-if="canSendRelayServerCmd" type="success">{{ T('Available') }}</el-tag>
-      <el-tag v-else type="danger">{{ T('NotAvailable') }}</el-tag>
-      <el-button size="small" type="text" @click="refreshCanSendRelayServerCmd">{{ T('Refresh') }}</el-button>
+      <a-tag v-if="canSendRelayServerCmd" color="success">{{ T('Available') }}</a-tag>
+      <a-tag v-else color="error">{{ T('NotAvailable') }}</a-tag>
+      <a-button size="small" type="link" @click="refreshCanSendRelayServerCmd">{{ T('Refresh') }}</a-button>
     </h5>
-    <el-tabs
-        v-model="activeName"
-        type="card"
-    >
-      <el-tab-pane :label="T('Simple')" name="Simple">
-        <el-space wrap>
-          <RelayServers ref="rs" :can-send="canSendIdServerCmd"/>
-          <alwaysUseRelay :can-send="canSendIdServerCmd" @success="handleAlwaysUseRelaySuccess"/>
-          <mustLogin :can-send="canControlMustLogin&&canSendIdServerCmd"/>
-          <usage :can-send="canSendRelayServerCmd"/>
-          <blocklist :can-send="canSendRelayServerCmd"/>
-          <blacklist :can-send="canSendRelayServerCmd"/>
-        </el-space>
-
-
-      </el-tab-pane>
-      <el-tab-pane :label="T('Advanced')" name="Advanced">
-        <el-card class="list-query" shadow="hover">
-          <el-form inline label-width="80px">
-            <el-form-item>
-              <el-button type="primary" @click="handlerQuery">{{ T('Filter') }}</el-button>
-              <el-button type="danger" @click="toAdd">{{ T('Add') }}</el-button>
-              <el-button type="success" :disabled="!canSendIdServerCmd" @click="showCmd({cmd:'',option:'',target:ID_TARGET})">{{ T('Send') }} To Id</el-button>
-              <el-button type="success" :disabled="!canSendRelayServerCmd" @click="showCmd({cmd:'',option:'',target:RELAY_TARGET})">{{ T('Send') }} To Relay</el-button>
-            </el-form-item>
-          </el-form>
-        </el-card>
-        <el-card class="list-body" shadow="hover">
-          <el-table :data="listRes.list" v-loading="listRes.loading" border>
-            <el-table-column prop="cmd" label="cmd" align="center"></el-table-column>
-            <el-table-column prop="alias" label="alias" align="center"></el-table-column>
-            <el-table-column prop="option" label="option" align="center"></el-table-column>
-            <el-table-column prop="explain" label="explain" align="center"></el-table-column>
-            <el-table-column label="actions" align="center">
-              <template #default="{row}">
-                <el-button type="success" :disabled="!canSendCmd(row.target)" @click="showCmd(row)">{{ T('Send') }}</el-button>
-                <el-button v-if="row.id" type="primary" @click="toUpdate(row)">{{ T('Edit') }}</el-button>
-                <el-button v-if="row.id" type="danger" @click="del(row)">{{ T('Delete') }}</el-button>
+    <a-tabs v-model:activeKey="activeName" type="card">
+      <a-tab-pane key="Simple" :tab="T('Simple')">
+        <a-space wrap>
+          <RelayServers ref="rs" :can-send="canSendIdServerCmd" />
+          <alwaysUseRelay :can-send="canSendIdServerCmd" @success="handleAlwaysUseRelaySuccess" />
+          <mustLogin :can-send="canControlMustLogin&&canSendIdServerCmd" />
+          <usage :can-send="canSendRelayServerCmd" />
+          <blocklist :can-send="canSendRelayServerCmd" />
+          <blacklist :can-send="canSendRelayServerCmd" />
+        </a-space>
+      </a-tab-pane>
+      <a-tab-pane key="Advanced" :tab="T('Advanced')">
+        <a-card class="list-query" :bordered="false">
+          <a-form layout="inline">
+            <a-form-item>
+              <a-button type="primary" @click="handlerQuery">{{ T('Filter') }}</a-button>
+              <a-button type="primary" @click="toAdd" style="margin-left: 8px;">{{ T('Add') }}</a-button>
+              <a-button type="primary" :disabled="!canSendIdServerCmd" @click="showCmd({cmd:'',option:'',target:ID_TARGET})" style="margin-left: 8px;">{{ T('Send') }} To Id</a-button>
+              <a-button type="primary" :disabled="!canSendRelayServerCmd" @click="showCmd({cmd:'',option:'',target:RELAY_TARGET})" style="margin-left: 8px;">{{ T('Send') }} To Relay</a-button>
+            </a-form-item>
+          </a-form>
+        </a-card>
+        <a-card class="list-body" :bordered="false">
+          <a-table :data-source="listRes.list" :loading="listRes.loading" :columns="columns" bordered :pagination="false" rowKey="id">
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'actions'">
+                <a-button type="primary" :disabled="!canSendCmd(record.target)" @click="showCmd(record)">{{ T('Send') }}</a-button>
+                <a-button v-if="record.id" @click="toUpdate(record)" style="margin-left: 8px;">{{ T('Edit') }}</a-button>
+                <a-button v-if="record.id" type="primary" danger @click="del(record)" style="margin-left: 8px;">{{ T('Delete') }}</a-button>
               </template>
-            </el-table-column>
-          </el-table>
+            </template>
+          </a-table>
 
-          <el-dialog v-model="formVisible">
-            <el-form label-width="150">
-              <el-form-item label="cmd">
-                <el-input v-model="formData.cmd"></el-input>
-              </el-form-item>
-              <el-form-item label="alias">
-                <el-input v-model="formData.alias"></el-input>
-              </el-form-item>
-              <el-form-item label="option">
-                <el-input v-model="formData.option"></el-input>
-              </el-form-item>
-              <el-form-item label="target">
-                <el-radio-group v-model="formData.target">
-                  <el-radio label="id_server" value="21115"></el-radio>
-                  <el-radio label="relay_server" value="21117"></el-radio>
-                </el-radio-group>
-              </el-form-item>
-              <el-form-item label="explain">
-                <el-input v-model="formData.explain"></el-input>
-              </el-form-item>
-              <el-form-item>
-                <el-button type="primary" @click="submit">{{ T('Submit') }}</el-button>
-                <el-button @click="cancel">{{ T('Cancel') }}</el-button>
-              </el-form-item>
-            </el-form>
-          </el-dialog>
+          <a-modal v-model:open="formVisible" :title="!formData.id ? T('Create') : T('Update')" @ok="submit" @cancel="formVisible = false">
+            <a-form :model="formData" layout="vertical" style="margin-top: 20px;">
+              <a-form-item label="cmd" name="cmd" :rules="[{ required: true }]"><a-input v-model:value="formData.cmd" /></a-form-item>
+              <a-form-item label="alias" name="alias"><a-input v-model:value="formData.alias" /></a-form-item>
+              <a-form-item label="option" name="option"><a-input v-model:value="formData.option" /></a-form-item>
+              <a-form-item label="target" name="target" :rules="[{ required: true }]">
+                <a-radio-group v-model:value="formData.target">
+                  <a-radio value="21115">id_server</a-radio>
+                  <a-radio value="21117">relay_server</a-radio>
+                </a-radio-group>
+              </a-form-item>
+              <a-form-item label="explain" name="explain"><a-input v-model:value="formData.explain" /></a-form-item>
+            </a-form>
+          </a-modal>
 
-          <el-dialog :title="T('SendCmd')" v-model="showCmdForm">
-            <el-form label-width="150" :disabled="!canSendCmd(customCmd.target)">
-              <el-form-item label="cmd">
-                <el-input v-model="customCmd.cmd"></el-input>
-              </el-form-item>
-              <el-form-item label="option">
-                <el-input v-model="customCmd.option"></el-input>
-                <el-text v-if="customCmd.example.trim()" style="margin-top: 5px">Example:
-                  <el-text type="primary">{{ customCmd.example }}</el-text>
-                </el-text>
-              </el-form-item>
-              <!--              <el-form-item label="target">
-                              <el-radio-group v-model="customCmd.target">
-                                <el-radio label="id_server" value="21115"></el-radio>
-                                <el-radio label="relay_server" value="21117"></el-radio>
-                              </el-radio-group>
-                            </el-form-item>-->
-              <el-form-item>
-                <el-button type="primary" @click="submitCmd">{{ T('Send') }}</el-button>
-              </el-form-item>
-              <el-form-item :label="T('Result')">
-                <el-input type="textarea" readonly disabled v-model="customCmd.res" rows="15"></el-input>
-              </el-form-item>
-            </el-form>
-          </el-dialog>
-        </el-card>
-      </el-tab-pane>
-    </el-tabs>
-
+          <a-modal v-model:open="showCmdForm" :title="T('SendCmd')" @ok="submitCmd" @cancel="showCmdForm = false">
+            <a-form :model="customCmd" layout="vertical" style="margin-top: 20px;">
+              <a-form-item label="cmd"><a-input v-model:value="customCmd.cmd" /></a-form-item>
+              <a-form-item label="option">
+                <a-input v-model:value="customCmd.option" />
+                <a-typography-text v-if="customCmd.example.trim()" style="margin-top: 5px;">Example:
+                  <a-typography-text type="primary">{{ customCmd.example }}</a-typography-text>
+                </a-typography-text>
+              </a-form-item>
+              <a-form-item :label="T('Result')"><a-textarea v-model:value="customCmd.res" readonly :rows="15" /></a-form-item>
+            </a-form>
+          </a-modal>
+        </a-card>
+      </a-tab-pane>
+    </a-tabs>
   </div>
 </template>
 
-
 <script setup>
   import { create, list, remove, sendCmd, update } from '@/api/rustdesk'
-  import { onMounted, reactive, ref } from 'vue'
+  import { onMounted, reactive, ref, h } from 'vue'
   import { T } from '@/utils/i18n'
-  import { ElMessage, ElMessageBox } from 'element-plus'
+  import { message, Modal } from 'ant-design-vue'
+  import { ExclamationCircleOutlined } from '@ant-design/icons-vue'
   import { ID_TARGET, RELAY_TARGET } from '@/views/rustdesk/options'
   import blocklist from '@/views/rustdesk/blocklist.vue'
   import blacklist from '@/views/rustdesk/blacklist.vue'
@@ -148,7 +112,6 @@
   onMounted(refreshCanSendIdServerCmd)
 
   const canSendRelayServerCmd = ref(false)
-
   const checkCanSendRelayServerCmd = async () => {
     const res = await sendCmd({ cmd: 'h', target: RELAY_TARGET }).catch(_ => false)
     canSendRelayServerCmd.value = !!res.data
@@ -164,22 +127,13 @@
   }
 
   const canSendCmd = (target) => {
-    if (target === ID_TARGET) {
-      return canSendIdServerCmd.value
-    }
-    if (target === RELAY_TARGET) {
-      return canSendRelayServerCmd.value
-    }
+    if (target === ID_TARGET) return canSendIdServerCmd.value
+    if (target === RELAY_TARGET) return canSendRelayServerCmd.value
     return false
   }
 
-  const listRes = reactive({
-    list: [], total: 0, loading: false,
-  })
-  const listQuery = reactive({
-    page: 1,
-    page_size: 10,
-  })
+  const listRes = reactive({ list: [], total: 0, loading: false })
+  const listQuery = reactive({ page: 1, page_size: 10 })
   const getList = async () => {
     listRes.loading = true
     const res = await list(listQuery).catch(_ => false)
@@ -190,36 +144,29 @@
     }
   }
   const handlerQuery = () => {
-    if (listQuery.page === 1) {
-      getList()
-    } else {
-      listQuery.page = 1
-    }
+    if (listQuery.page === 1) getList()
+    else listQuery.page = 1
   }
   onMounted(getList)
-  const del = async (row) => {
-    const cf = await ElMessageBox.confirm(T('Confirm?', { param: T('Delete') }), {
-      confirmButtonText: T('Confirm'),
-      cancelButtonText: T('Cancel'),
-      type: 'warning',
-    }).catch(_ => false)
-    if (!cf) {
-      return false
-    }
 
-    const res = await remove({ id: row.id }).catch(_ => false)
-    if (res) {
-      ElMessage.success(T('OperationSuccess'))
-      getList()
-    }
+  const del = (row) => {
+    Modal.confirm({
+      title: T('Confirm?'),
+      icon: h(ExclamationCircleOutlined),
+      content: T('Confirm?', { param: T('Delete') }),
+      okText: T('Confirm'),
+      cancelText: T('Cancel'),
+      onOk: async () => {
+        const res = await remove({ id: row.id }).catch(_ => false)
+        if (res) {
+          message.success(T('OperationSuccess'))
+          getList()
+        }
+      }
+    });
   }
-  const formData = reactive({
-    cmd: '',
-    alias: '',
-    option: '',
-    target: '',
-    explain: '',
-  })
+
+  const formData = reactive({ id: 0, cmd: '', alias: '', option: '', target: '', explain: '' })
   const formVisible = ref(false)
   const toAdd = () => {
     formVisible.value = true
@@ -237,31 +184,21 @@
     formData.target = row.target
     formData.explain = row.explain
   }
-  const submit = async () => {
+  const submit = () => {
     if (!formData.cmd) {
-      ElMessage.error(T('ParamRequired', { param: 'cmd' }))
+      message.error(T('ParamRequired', { param: 'cmd' }))
       return
     }
     const api = formData.id ? update : create
-    const res = await api(formData).catch(_ => false)
-    if (res) {
-      ElMessage.success(T('OperationSuccess'))
+    api(formData).then(res => {
+      message.success(T('OperationSuccess'))
       formVisible.value = false
       getList()
-    }
-  }
-  const cancel = () => {
-    formVisible.value = false
+    })
   }
 
   const showCmdForm = ref(false)
-  const customCmd = reactive({
-    cmd: '',
-    option: '',
-    target: '',
-    res: '',
-    example: '',
-  })
+  const customCmd = reactive({ cmd: '', option: '', target: '', res: '', example: '' })
   const showCmd = (row) => {
     showCmdForm.value = true
     customCmd.cmd = row.cmd
@@ -270,14 +207,13 @@
     customCmd.target = row.target
     customCmd.example = `${row.cmd} ${row.option}`
   }
-  const submitCmd = async () => {
+  const submitCmd = () => {
     sendCmd(customCmd).then(res => {
       console.log(res)
       customCmd.res = res.data
-      ElMessage.success(T('OperationSuccess'))
+      message.success(T('OperationSuccess'))
     })
   }
-
 </script>
 
 <style scoped lang="scss">

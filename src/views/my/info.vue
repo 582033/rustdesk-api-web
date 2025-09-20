@@ -1,50 +1,44 @@
 <template>
   <div>
-    <el-card :title="T('Userinfo')" shadow="hover">
-      <el-form class="info-form" ref="form" label-width="120px" label-suffix="：">
-        <el-form-item :label="T('Username')">
+    <a-card :title="T('Userinfo')" shadow="hover">
+      <a-form class="info-form" ref="form" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+        <a-form-item :label="T('Username')">
           <div>{{ userStore.username }}</div>
-        </el-form-item>
-        <el-form-item :label="T('Email')">
-          <div>{{ userStore.email }}</div>
-        </el-form-item>
-        <el-form-item :label="T('Password')" prop="password">
-          <el-button type="danger" @click="showChangePwd">{{ T('ChangePassword') }}</el-button>
-        </el-form-item>
-        <el-form-item label="OIDC">
-          <el-table :data="oidcData" border fit>
-            <el-table-column :label="T('IdP')" prop="op" align="center"></el-table-column>
-            <el-table-column :label="T('Status')" prop="status" align="center">
-              <template #default="{ row }">
-                <el-tag v-if="row.status === 1" type="success">{{ T('HasBind') }}</el-tag>
-                <el-tag v-else type="danger">{{ T('NoBind') }}</el-tag>
+        </a-form-item>
+        <a-form-item :label="T('Password')">
+          <a-button type="primary" danger @click="showChangePwd">{{ T('ChangePassword') }}</a-button>
+        </a-form-item>
+        <!-- <a-form-item label="OIDC">
+          <a-table :data-source="oidcData" :columns="columns" bordered rowKey="op">
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'status'">
+                <a-tag v-if="record.status === 1" color="success">{{ T('HasBind') }}</a-tag>
+                <a-tag v-else color="error">{{ T('NoBind') }}</a-tag>
               </template>
-            </el-table-column>
-            <el-table-column :label="T('Actions')" align="center" width="200">
-              <template #default="{ row }">
-                <el-button v-if="row.status === 1" type="danger" size="small" @click="toUnBind(row)">{{ T('UnBind') }}</el-button>
-                <el-button v-else type="success" size="small" @click="toBind(row)">{{ T('ToBind') }}</el-button>
+              <template v-if="column.key === 'actions'">
+                <a-button v-if="record.status === 1" type="primary" danger size="small" @click="toUnBind(record)">{{ T('UnBind') }}</a-button>
+                <a-button v-else type="primary" size="small" @click="toBind(record)">{{ T('ToBind') }}</a-button>
               </template>
-            </el-table-column>
-          </el-table>
-        </el-form-item>
-      </el-form>
-    </el-card>
-    <el-card shadow="hover" style="margin-top: 20px">
-      <div v-html="html"></div>
-    </el-card>
+            </template>
+          </a-table>
+        </a-form-item> -->
+      </a-form>
+    </a-card>
+    <a-card shadow="hover" style="margin-top: 20px">
+    </a-card>
     <changePwdDialog v-model:visible="changePwdVisible"></changePwdDialog>
   </div>
 </template>
 
 <script setup>
   import changePwdDialog from '@/components/changePwdDialog.vue'
-  import { computed, ref } from 'vue'
+  import { computed, ref, h } from 'vue'
   import { useUserStore } from '@/store/user'
   import { useAppStore } from '@/store/app'
   import { bind, unbind } from '@/api/oauth'
   import { myOauth } from '@/api/user'
-  import { ElMessageBox } from 'element-plus'
+  import { Modal } from 'ant-design-vue'
+  import { ExclamationCircleOutlined } from '@ant-design/icons-vue'
   import { T } from '@/utils/i18n'
   import { marked } from 'marked'
 
@@ -55,14 +49,21 @@
     changePwdVisible.value = true
   }
   const oidcData = ref([])
+
+  const columns = [
+    { title: T('IdP'), dataIndex: 'op', key: 'op', align: 'center' },
+    { title: T('Status'), dataIndex: 'status', key: 'status', align: 'center' },
+    { title: T('Actions'), key: 'actions', align: 'center', width: 200 },
+  ];
+
   const getMyOauth = async () => {
     const res = await myOauth().catch(_ => false)
     if (res) {
       oidcData.value = res.data
     }
-
   }
   getMyOauth()
+
   const toBind = async (row) => {
     const res = await bind({ op: row.op }).catch(_ => false)
     if (res) {
@@ -70,23 +71,22 @@
       window.open(url)
     }
   }
-  const toUnBind = async (row) => {
-    const cf = await ElMessageBox.confirm(T('Confirm?', { param: T('UnBind') }), {
-      confirmButtonText: T('Confirm'),
-      cancelButtonText: T('Cancel'),
-      type: 'warning',
-    }).catch(_ => false)
-    if (!cf) {
-      return false
-    }
-    const res = await unbind({ op: row.op }).catch(_ => false)
-    if (res) {
-      getMyOauth()
-    }
 
+  const toUnBind = (row) => {
+    Modal.confirm({
+      title: T('Confirm?'),
+      icon: h(ExclamationCircleOutlined),
+      content: T('Confirm?', { param: T('UnBind') }),
+      okText: T('Confirm'),
+      cancelText: T('Cancel'),
+      onOk: async () => {
+        const res = await unbind({ op: row.op }).catch(_ => false)
+        if (res) {
+          getMyOauth()
+        }
+      },
+    });
   }
-
-  const html = computed(_ => marked(appStore.setting.hello||''))
 
 </script>
 
@@ -94,6 +94,5 @@
 .info-form {
   width: 600px;
   margin: 0 auto;
-
 }
 </style>

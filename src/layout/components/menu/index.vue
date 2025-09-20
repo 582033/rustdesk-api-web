@@ -1,15 +1,13 @@
 <template>
-  <el-menu
+  <a-menu
           class="menus"
-          :collapse="isCollapse"
-          :default-active="activeIndex"
-          background-color="#2d3a4b"
-          text-color="#fff"
-          active-text-color="#409eff"
-          router
+          :inline-collapsed="isCollapse"
+          v-model:selectedKeys="selectedKeys"
+          theme="light"
+          mode="inline"
   >
-    <menu-item v-for="(route,index) in routes" :key="route.name" :route="route"></menu-item>
-  </el-menu>
+    <menu-item v-for="route in routes" :key="route.name" :route="route"></menu-item>
+  </a-menu>
 </template>
 
 <script>
@@ -29,12 +27,12 @@
       const route = useRoute()
       const app = useAppStore()
       const isCollapse = computed(() => app.setting.sideIsCollapse)
-      const activeIndex = computed(() => route.name)
+      const selectedKeys = computed(() => [route.name])
 
       routes.value = useRouteStore().routes
       return {
         routes,
-        activeIndex,
+        selectedKeys,
         isCollapse,
       }
     },
@@ -44,12 +42,11 @@
 
 <style lang="scss" scoped>
   .menus {
-    min-height: 100vh;
+    height: 100vh;
     border-right: none;
-    &:not(.el-menu--collapse) {
+    &:not(.ant-menu-inline-collapsed) {
       width: var(--sideBarWidth);
     }
-
   }
 </style>
 <style>

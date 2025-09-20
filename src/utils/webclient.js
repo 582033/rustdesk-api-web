@@ -1,7 +1,7 @@
 import Websock from '@/utils/webclient/websock'
 import * as rendezvous from '@/utils/webclient/rendezvous'
 import * as message from '@/utils/webclient/message'
-import { ElMessageBox } from 'element-plus'
+import { Modal } from 'ant-design-vue'
 import { T } from '@/utils/i18n'
 import { useAppStore } from '@/store/app'
 
@@ -47,16 +47,16 @@ export async function getPeerSlat (id) {
     if (phr.failure != rendezvous.PunchHoleResponse_Failure.UNRECOGNIZED) {
       switch (phr?.failure) {
         case rendezvous.PunchHoleResponse_Failure.ID_NOT_EXIST:
-          ElMessageBox.alert(T('IDNotExist'), T('Error'))
+          Modal.error({ title: T('Error'), content: T('IDNotExist') })
           break
         case rendezvous.PunchHoleResponse_Failure.OFFLINE:
-          ElMessageBox.alert(T('RemoteDesktopOffline'), T('Error'))
+          Modal.error({ title: T('Error'), content: T('RemoteDesktopOffline') })
           break
         case rendezvous.PunchHoleResponse_Failure.LICENSE_MISMATCH:
-          ElMessageBox.alert(T('KeyMismatch'), T('Error'))
+          Modal.error({ title: T('Error'), content: T('KeyMismatch') })
           break
         case rendezvous.PunchHoleResponse_Failure.LICENSE_OVERUSE:
-          ElMessageBox.alert(T('KeyOveruse'), T('Error'))
+          Modal.error({ title: T('Error'), content: T('KeyOveruse') })
           break
       }
     }
