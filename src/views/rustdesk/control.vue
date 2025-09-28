@@ -197,6 +197,49 @@
     })
   }
 
+  const columns = [
+    {
+      title: T('ID'),
+      dataIndex: 'id',
+      key: 'id',
+    },
+    {
+      title: T('Command'),
+      dataIndex: 'cmd',
+      key: 'cmd',
+    },
+    {
+      title: T('Alias'),
+      dataIndex: 'alias',
+      key: 'alias',
+    },
+    {
+      title: T('Option'),
+      dataIndex: 'option',
+      key: 'option',
+    },
+    {
+      title: T('Target'),
+      dataIndex: 'target',
+      key: 'target',
+      customRender: ({ text }) => {
+        if (text === ID_TARGET) return 'ID Server'
+        if (text === RELAY_TARGET) return 'Relay Server'
+        return text
+      },
+    },
+    {
+      title: T('Explain'),
+      dataIndex: 'explain',
+      key: 'explain',
+    },
+    {
+      title: T('Actions'),
+      key: 'actions',
+      slots: { customRender: 'actions' },
+    },
+  ]
+
   const showCmdForm = ref(false)
   const customCmd = reactive({ cmd: '', option: '', target: '', res: '', example: '' })
   const showCmd = (row) => {
@@ -210,8 +253,12 @@
   const submitCmd = () => {
     sendCmd(customCmd).then(res => {
       console.log(res)
-      customCmd.res = res.data
+      customCmd.res = res?.data || ''
       message.success(T('OperationSuccess'))
+    }).catch(error => {
+      console.error('Command execution failed:', error)
+      customCmd.res = 'Error: ' + (error.message || 'Command execution failed')
+      message.error(T('OperationFailed'))
     })
   }
 </script>
